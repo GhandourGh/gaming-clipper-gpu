@@ -1,0 +1,3 @@
+{"name": "ad-break-is-not-a-moment", "duration": 600, "seed": 2, "talk_db": -28,
+ "moments": [{"at": 80, "len": 4}, {"at": 450, "len": 4}], "ad": [200, 300],
+ "max_candidates": 8, "expect": {"recall_min": 1.0, "candidates_min": 2, "candidates_max": 8}}

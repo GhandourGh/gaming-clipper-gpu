@@ -1,0 +1,646 @@
+[
+ {
+  "file": "sfx/kenney/punch_0.ogg",
+  "original": "impactPunch_heavy_000.ogg",
+  "pack": "impact-sounds",
+  "author": "Kenney (kenney.nl)",
+  "license": "CC0 1.0"
+ },
+ {
+  "file": "sfx/kenney/punch_1.ogg",
+  "original": "impactPunch_heavy_001.ogg",
+  "pack": "impact-sounds",
+  "author": "Kenney (kenney.nl)",
+  "license": "CC0 1.0"
+ },
+ {
+  "file": "sfx/kenney/punch_2.ogg",
+  "original": "impactPunch_heavy_002.ogg",
+  "pack": "impact-sounds",
+  "author": "Kenney (kenney.nl)",
+  "license": "CC0 1.0"
+ },
+ {
+  "file": "sfx/kenney/punch_3.ogg",
+  "original": "impactPunch_heavy_003.ogg",
+  "pack": "impact-sounds",
+  "author": "Kenney (kenney.nl)",
+  "license": "CC0 1.0"
+ },
+ {
+  "file": "sfx/kenney/punch_4.ogg",
+  "original": "impactPunch_heavy_004.ogg",
+  "pack": "impact-sounds",
+  "author": "Kenney (kenney.nl)",
+  "license": "CC0 1.0"
+ },
+ {
+  "file": "sfx/kenney/punch_5.ogg",
+  "original": "impactPunch_medium_000.ogg",
+  "pack": "impact-sounds",
+  "author": "Kenney (kenney.nl)",
+  "license": "CC0 1.0"
+ },
+ {
+  "file": "sfx/kenney/punch_6.ogg",
+  "original": "impactPunch_medium_001.ogg",
+  "pack": "impact-sounds",
+  "author": "Kenney (kenney.nl)",
+  "license": "CC0 1.0"
+ },
+ {
+  "file": "sfx/kenney/punch_7.ogg",
+  "original": "impactPunch_medium_002.ogg",
+  "pack": "impact-sounds",
+  "author": "Kenney (kenney.nl)",
+  "license": "CC0 1.0"
+ },
+ {
+  "file": "sfx/kenney/hit_metal_0.ogg",
+  "original": "impactMetal_heavy_000.ogg",
+  "pack": "impact-sounds",
+  "author": "Kenney (kenney.nl)",
+  "license": "CC0 1.0"
+ },
+ {
+  "file": "sfx/kenney/hit_metal_1.ogg",
+  "original": "impactMetal_heavy_001.ogg",
+  "pack": "impact-sounds",
+  "author": "Kenney (kenney.nl)",
+  "license": "CC0 1.0"
+ },
+ {
+  "file": "sfx/kenney/hit_metal_2.ogg",
+  "original": "impactMetal_heavy_002.ogg",
+  "pack": "impact-sounds",
+  "author": "Kenney (kenney.nl)",
+  "license": "CC0 1.0"
+ },
+ {
+  "file": "sfx/kenney/hit_metal_3.ogg",
+  "original": "impactMetal_heavy_003.ogg",
+  "pack": "impact-sounds",
+  "author": "Kenney (kenney.nl)",
+  "license": "CC0 1.0"
+ },
+ {
+  "file": "sfx/kenney/hit_metal_4.ogg",
+  "original": "impactMetal_heavy_004.ogg",
+  "pack": "impact-sounds",
+  "author": "Kenney (kenney.nl)",
+  "license": "CC0 1.0"
+ },
+ {
+  "file": "sfx/kenney/hit_metal_5.ogg",
+  "original": "impactMetal_medium_000.ogg",
+  "pack": "impact-sounds",
+  "author": "Kenney (kenney.nl)",
+  "license": "CC0 1.0"
+ },
+ {
+  "file": "sfx/kenney/hit_metal_6.ogg",
+  "original": "impactMetal_medium_001.ogg",
+  "pack": "impact-sounds",
+  "author": "Kenney (kenney.nl)",
+  "license": "CC0 1.0"
+ },
+ {
+  "file": "sfx/kenney/hit_metal_7.ogg",
+  "original": "impactMetal_medium_002.ogg",
+  "pack": "impact-sounds",
+  "author": "Kenney (kenney.nl)",
+  "license": "CC0 1.0"
+ },
+ {
+  "file": "sfx/kenney/thud_0.ogg",
+  "original": "impactPlate_heavy_000.ogg",
+  "pack": "impact-sounds",
+  "author": "Kenney (kenney.nl)",
+  "license": "CC0 1.0"
+ },
+ {
+  "file": "sfx/kenney/thud_1.ogg",
+  "original": "impactPlate_heavy_001.ogg",
+  "pack": "impact-sounds",
+  "author": "Kenney (kenney.nl)",
+  "license": "CC0 1.0"
+ },
+ {
+  "file": "sfx/kenney/thud_2.ogg",
+  "original": "impactPlate_heavy_002.ogg",
+  "pack": "impact-sounds",
+  "author": "Kenney (kenney.nl)",
+  "license": "CC0 1.0"
+ },
+ {
+  "file": "sfx/kenney/thud_3.ogg",
+  "original": "impactPlate_heavy_003.ogg",
+  "pack": "impact-sounds",
+  "author": "Kenney (kenney.nl)",
+  "license": "CC0 1.0"
+ },
+ {
+  "file": "sfx/kenney/thud_4.ogg",
+  "original": "impactPlate_heavy_004.ogg",
+  "pack": "impact-sounds",
+  "author": "Kenney (kenney.nl)",
+  "license": "CC0 1.0"
+ },
+ {
+  "file": "sfx/kenney/thud_5.ogg",
+  "original": "impactSoft_heavy_000.ogg",
+  "pack": "impact-sounds",
+  "author": "Kenney (kenney.nl)",
+  "license": "CC0 1.0"
+ },
+ {
+  "file": "sfx/kenney/thud_6.ogg",
+  "original": "impactSoft_heavy_001.ogg",
+  "pack": "impact-sounds",
+  "author": "Kenney (kenney.nl)",
+  "license": "CC0 1.0"
+ },
+ {
+  "file": "sfx/kenney/thud_7.ogg",
+  "original": "impactSoft_heavy_002.ogg",
+  "pack": "impact-sounds",
+  "author": "Kenney (kenney.nl)",
+  "license": "CC0 1.0"
+ },
+ {
+  "file": "sfx/kenney/glass_break_0.ogg",
+  "original": "impactGlass_heavy_000.ogg",
+  "pack": "impact-sounds",
+  "author": "Kenney (kenney.nl)",
+  "license": "CC0 1.0"
+ },
+ {
+  "file": "sfx/kenney/glass_break_1.ogg",
+  "original": "impactGlass_heavy_001.ogg",
+  "pack": "impact-sounds",
+  "author": "Kenney (kenney.nl)",
+  "license": "CC0 1.0"
+ },
+ {
+  "file": "sfx/kenney/glass_break_2.ogg",
+  "original": "impactGlass_heavy_002.ogg",
+  "pack": "impact-sounds",
+  "author": "Kenney (kenney.nl)",
+  "license": "CC0 1.0"
+ },
+ {
+  "file": "sfx/kenney/glass_break_3.ogg",
+  "original": "impactGlass_heavy_003.ogg",
+  "pack": "impact-sounds",
+  "author": "Kenney (kenney.nl)",
+  "license": "CC0 1.0"
+ },
+ {
+  "file": "sfx/kenney/glass_break_4.ogg",
+  "original": "impactGlass_heavy_004.ogg",
+  "pack": "impact-sounds",
+  "author": "Kenney (kenney.nl)",
+  "license": "CC0 1.0"
+ },
+ {
+  "file": "sfx/kenney/bell_0.ogg",
+  "original": "impactBell_heavy_000.ogg",
+  "pack": "impact-sounds",
+  "author": "Kenney (kenney.nl)",
+  "license": "CC0 1.0"
+ },
+ {
+  "file": "sfx/kenney/bell_1.ogg",
+  "original": "impactBell_heavy_001.ogg",
+  "pack": "impact-sounds",
+  "author": "Kenney (kenney.nl)",
+  "license": "CC0 1.0"
+ },
+ {
+  "file": "sfx/kenney/bell_2.ogg",
+  "original": "impactBell_heavy_002.ogg",
+  "pack": "impact-sounds",
+  "author": "Kenney (kenney.nl)",
+  "license": "CC0 1.0"
+ },
+ {
+  "file": "sfx/kenney/bell_3.ogg",
+  "original": "impactBell_heavy_003.ogg",
+  "pack": "impact-sounds",
+  "author": "Kenney (kenney.nl)",
+  "license": "CC0 1.0"
+ },
+ {
+  "file": "sfx/kenney/bell_4.ogg",
+  "original": "impactBell_heavy_004.ogg",
+  "pack": "impact-sounds",
+  "author": "Kenney (kenney.nl)",
+  "license": "CC0 1.0"
+ },
+ {
+  "file": "sfx/kenney/click_0.ogg",
+  "original": "click_001.ogg",
+  "pack": "interface-sounds",
+  "author": "Kenney (kenney.nl)",
+  "license": "CC0 1.0"
+ },
+ {
+  "file": "sfx/kenney/click_1.ogg",
+  "original": "click_002.ogg",
+  "pack": "interface-sounds",
+  "author": "Kenney (kenney.nl)",
+  "license": "CC0 1.0"
+ },
+ {
+  "file": "sfx/kenney/click_2.ogg",
+  "original": "click_003.ogg",
+  "pack": "interface-sounds",
+  "author": "Kenney (kenney.nl)",
+  "license": "CC0 1.0"
+ },
+ {
+  "file": "sfx/kenney/click_3.ogg",
+  "original": "click_004.ogg",
+  "pack": "interface-sounds",
+  "author": "Kenney (kenney.nl)",
+  "license": "CC0 1.0"
+ },
+ {
+  "file": "sfx/kenney/click_4.ogg",
+  "original": "click_005.ogg",
+  "pack": "interface-sounds",
+  "author": "Kenney (kenney.nl)",
+  "license": "CC0 1.0"
+ },
+ {
+  "file": "sfx/kenney/confirm_0.ogg",
+  "original": "confirmation_001.ogg",
+  "pack": "interface-sounds",
+  "author": "Kenney (kenney.nl)",
+  "license": "CC0 1.0"
+ },
+ {
+  "file": "sfx/kenney/confirm_1.ogg",
+  "original": "confirmation_002.ogg",
+  "pack": "interface-sounds",
+  "author": "Kenney (kenney.nl)",
+  "license": "CC0 1.0"
+ },
+ {
+  "file": "sfx/kenney/confirm_2.ogg",
+  "original": "confirmation_003.ogg",
+  "pack": "interface-sounds",
+  "author": "Kenney (kenney.nl)",
+  "license": "CC0 1.0"
+ },
+ {
+  "file": "sfx/kenney/confirm_3.ogg",
+  "original": "confirmation_004.ogg",
+  "pack": "interface-sounds",
+  "author": "Kenney (kenney.nl)",
+  "license": "CC0 1.0"
+ },
+ {
+  "file": "sfx/kenney/error_0.ogg",
+  "original": "error_001.ogg",
+  "pack": "interface-sounds",
+  "author": "Kenney (kenney.nl)",
+  "license": "CC0 1.0"
+ },
+ {
+  "file": "sfx/kenney/error_1.ogg",
+  "original": "error_002.ogg",
+  "pack": "interface-sounds",
+  "author": "Kenney (kenney.nl)",
+  "license": "CC0 1.0"
+ },
+ {
+  "file": "sfx/kenney/error_2.ogg",
+  "original": "error_003.ogg",
+  "pack": "interface-sounds",
+  "author": "Kenney (kenney.nl)",
+  "license": "CC0 1.0"
+ },
+ {
+  "file": "sfx/kenney/error_3.ogg",
+  "original": "error_004.ogg",
+  "pack": "interface-sounds",
+  "author": "Kenney (kenney.nl)",
+  "license": "CC0 1.0"
+ },
+ {
+  "file": "sfx/kenney/error_4.ogg",
+  "original": "error_005.ogg",
+  "pack": "interface-sounds",
+  "author": "Kenney (kenney.nl)",
+  "license": "CC0 1.0"
+ },
+ {
+  "file": "sfx/kenney/error_5.ogg",
+  "original": "error_006.ogg",
+  "pack": "interface-sounds",
+  "author": "Kenney (kenney.nl)",
+  "license": "CC0 1.0"
+ },
+ {
+  "file": "sfx/kenney/error_6.ogg",
+  "original": "error_007.ogg",
+  "pack": "interface-sounds",
+  "author": "Kenney (kenney.nl)",
+  "license": "CC0 1.0"
+ },
+ {
+  "file": "sfx/kenney/error_7.ogg",
+  "original": "error_008.ogg",
+  "pack": "interface-sounds",
+  "author": "Kenney (kenney.nl)",
+  "license": "CC0 1.0"
+ },
+ {
+  "file": "sfx/kenney/tick_0.ogg",
+  "original": "tick_001.ogg",
+  "pack": "interface-sounds",
+  "author": "Kenney (kenney.nl)",
+  "license": "CC0 1.0"
+ },
+ {
+  "file": "sfx/kenney/tick_1.ogg",
+  "original": "tick_002.ogg",
+  "pack": "interface-sounds",
+  "author": "Kenney (kenney.nl)",
+  "license": "CC0 1.0"
+ },
+ {
+  "file": "sfx/kenney/tick_2.ogg",
+  "original": "tick_004.ogg",
+  "pack": "interface-sounds",
+  "author": "Kenney (kenney.nl)",
+  "license": "CC0 1.0"
+ },
+ {
+  "file": "sfx/kenney/record_scratch_0.ogg",
+  "original": "scratch_001.ogg",
+  "pack": "interface-sounds",
+  "author": "Kenney (kenney.nl)",
+  "license": "CC0 1.0"
+ },
+ {
+  "file": "sfx/kenney/record_scratch_1.ogg",
+  "original": "scratch_002.ogg",
+  "pack": "interface-sounds",
+  "author": "Kenney (kenney.nl)",
+  "license": "CC0 1.0"
+ },
+ {
+  "file": "sfx/kenney/record_scratch_2.ogg",
+  "original": "scratch_003.ogg",
+  "pack": "interface-sounds",
+  "author": "Kenney (kenney.nl)",
+  "license": "CC0 1.0"
+ },
+ {
+  "file": "sfx/kenney/record_scratch_3.ogg",
+  "original": "scratch_004.ogg",
+  "pack": "interface-sounds",
+  "author": "Kenney (kenney.nl)",
+  "license": "CC0 1.0"
+ },
+ {
+  "file": "sfx/kenney/record_scratch_4.ogg",
+  "original": "scratch_005.ogg",
+  "pack": "interface-sounds",
+  "author": "Kenney (kenney.nl)",
+  "license": "CC0 1.0"
+ },
+ {
+  "file": "sfx/kenney/glitch_0.ogg",
+  "original": "glitch_001.ogg",
+  "pack": "interface-sounds",
+  "author": "Kenney (kenney.nl)",
+  "license": "CC0 1.0"
+ },
+ {
+  "file": "sfx/kenney/glitch_1.ogg",
+  "original": "glitch_002.ogg",
+  "pack": "interface-sounds",
+  "author": "Kenney (kenney.nl)",
+  "license": "CC0 1.0"
+ },
+ {
+  "file": "sfx/kenney/glitch_2.ogg",
+  "original": "glitch_003.ogg",
+  "pack": "interface-sounds",
+  "author": "Kenney (kenney.nl)",
+  "license": "CC0 1.0"
+ },
+ {
+  "file": "sfx/kenney/glitch_3.ogg",
+  "original": "glitch_004.ogg",
+  "pack": "interface-sounds",
+  "author": "Kenney (kenney.nl)",
+  "license": "CC0 1.0"
+ },
+ {
+  "file": "sfx/kenney/power_up_0.ogg",
+  "original": "powerUp1.ogg",
+  "pack": "digital-audio",
+  "author": "Kenney (kenney.nl)",
+  "license": "CC0 1.0"
+ },
+ {
+  "file": "sfx/kenney/power_up_1.ogg",
+  "original": "powerUp10.ogg",
+  "pack": "digital-audio",
+  "author": "Kenney (kenney.nl)",
+  "license": "CC0 1.0"
+ },
+ {
+  "file": "sfx/kenney/power_up_2.ogg",
+  "original": "powerUp11.ogg",
+  "pack": "digital-audio",
+  "author": "Kenney (kenney.nl)",
+  "license": "CC0 1.0"
+ },
+ {
+  "file": "sfx/kenney/power_up_3.ogg",
+  "original": "powerUp12.ogg",
+  "pack": "digital-audio",
+  "author": "Kenney (kenney.nl)",
+  "license": "CC0 1.0"
+ },
+ {
+  "file": "sfx/kenney/power_up_4.ogg",
+  "original": "powerUp2.ogg",
+  "pack": "digital-audio",
+  "author": "Kenney (kenney.nl)",
+  "license": "CC0 1.0"
+ },
+ {
+  "file": "sfx/kenney/power_up_5.ogg",
+  "original": "powerUp3.ogg",
+  "pack": "digital-audio",
+  "author": "Kenney (kenney.nl)",
+  "license": "CC0 1.0"
+ },
+ {
+  "file": "sfx/kenney/power_up_6.ogg",
+  "original": "powerUp4.ogg",
+  "pack": "digital-audio",
+  "author": "Kenney (kenney.nl)",
+  "license": "CC0 1.0"
+ },
+ {
+  "file": "sfx/kenney/power_up_7.ogg",
+  "original": "powerUp5.ogg",
+  "pack": "digital-audio",
+  "author": "Kenney (kenney.nl)",
+  "license": "CC0 1.0"
+ },
+ {
+  "file": "sfx/kenney/laser_0.ogg",
+  "original": "laser1.ogg",
+  "pack": "digital-audio",
+  "author": "Kenney (kenney.nl)",
+  "license": "CC0 1.0"
+ },
+ {
+  "file": "sfx/kenney/laser_1.ogg",
+  "original": "laser2.ogg",
+  "pack": "digital-audio",
+  "author": "Kenney (kenney.nl)",
+  "license": "CC0 1.0"
+ },
+ {
+  "file": "sfx/kenney/laser_2.ogg",
+  "original": "laser3.ogg",
+  "pack": "digital-audio",
+  "author": "Kenney (kenney.nl)",
+  "license": "CC0 1.0"
+ },
+ {
+  "file": "sfx/kenney/laser_3.ogg",
+  "original": "laser4.ogg",
+  "pack": "digital-audio",
+  "author": "Kenney (kenney.nl)",
+  "license": "CC0 1.0"
+ },
+ {
+  "file": "sfx/kenney/laser_4.ogg",
+  "original": "laser5.ogg",
+  "pack": "digital-audio",
+  "author": "Kenney (kenney.nl)",
+  "license": "CC0 1.0"
+ },
+ {
+  "file": "sfx/kenney/laser_5.ogg",
+  "original": "laser6.ogg",
+  "pack": "digital-audio",
+  "author": "Kenney (kenney.nl)",
+  "license": "CC0 1.0"
+ },
+ {
+  "file": "sfx/kenney/laser_6.ogg",
+  "original": "laser7.ogg",
+  "pack": "digital-audio",
+  "author": "Kenney (kenney.nl)",
+  "license": "CC0 1.0"
+ },
+ {
+  "file": "sfx/kenney/laser_7.ogg",
+  "original": "laser8.ogg",
+  "pack": "digital-audio",
+  "author": "Kenney (kenney.nl)",
+  "license": "CC0 1.0"
+ },
+ {
+  "file": "sfx/kenney/zap_0.ogg",
+  "original": "phaserUp1.ogg",
+  "pack": "digital-audio",
+  "author": "Kenney (kenney.nl)",
+  "license": "CC0 1.0"
+ },
+ {
+  "file": "sfx/kenney/zap_1.ogg",
+  "original": "phaserUp2.ogg",
+  "pack": "digital-audio",
+  "author": "Kenney (kenney.nl)",
+  "license": "CC0 1.0"
+ },
+ {
+  "file": "sfx/kenney/zap_2.ogg",
+  "original": "phaserUp3.ogg",
+  "pack": "digital-audio",
+  "author": "Kenney (kenney.nl)",
+  "license": "CC0 1.0"
+ },
+ {
+  "file": "sfx/kenney/zap_3.ogg",
+  "original": "phaserUp4.ogg",
+  "pack": "digital-audio",
+  "author": "Kenney (kenney.nl)",
+  "license": "CC0 1.0"
+ },
+ {
+  "file": "sfx/kenney/zap_4.ogg",
+  "original": "phaserUp5.ogg",
+  "pack": "digital-audio",
+  "author": "Kenney (kenney.nl)",
+  "license": "CC0 1.0"
+ },
+ {
+  "file": "sfx/kenney/zap_5.ogg",
+  "original": "phaserUp6.ogg",
+  "pack": "digital-audio",
+  "author": "Kenney (kenney.nl)",
+  "license": "CC0 1.0"
+ },
+ {
+  "file": "sfx/kenney/zap_6.ogg",
+  "original": "phaserUp7.ogg",
+  "pack": "digital-audio",
+  "author": "Kenney (kenney.nl)",
+  "license": "CC0 1.0"
+ },
+ {
+  "file": "sfx/kenney/zap_7.ogg",
+  "original": "zap1.ogg",
+  "pack": "digital-audio",
+  "author": "Kenney (kenney.nl)",
+  "license": "CC0 1.0"
+ },
+ {
+  "file": "sfx/kenney/level_up_0.ogg",
+  "original": "highUp.ogg",
+  "pack": "digital-audio",
+  "author": "Kenney (kenney.nl)",
+  "license": "CC0 1.0"
+ },
+ {
+  "file": "sfx/kenney/level_up_1.ogg",
+  "original": "threeTone1.ogg",
+  "pack": "digital-audio",
+  "author": "Kenney (kenney.nl)",
+  "license": "CC0 1.0"
+ },
+ {
+  "file": "sfx/kenney/level_up_2.ogg",
+  "original": "threeTone2.ogg",
+  "pack": "digital-audio",
+  "author": "Kenney (kenney.nl)",
+  "license": "CC0 1.0"
+ },
+ {
+  "file": "sfx/kenney/level_up_3.ogg",
+  "original": "twoTone1.ogg",
+  "pack": "digital-audio",
+  "author": "Kenney (kenney.nl)",
+  "license": "CC0 1.0"
+ },
+ {
+  "file": "sfx/kenney/level_up_4.ogg",
+  "original": "twoTone2.ogg",
+  "pack": "digital-audio",
+  "author": "Kenney (kenney.nl)",
+  "license": "CC0 1.0"
+ }
+]

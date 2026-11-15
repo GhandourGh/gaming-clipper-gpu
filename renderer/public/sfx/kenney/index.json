@@ -1,0 +1,124 @@
+{
+ "punch": [
+  "punch_0.ogg",
+  "punch_1.ogg",
+  "punch_2.ogg",
+  "punch_3.ogg",
+  "punch_4.ogg",
+  "punch_5.ogg",
+  "punch_6.ogg",
+  "punch_7.ogg"
+ ],
+ "hit_metal": [
+  "hit_metal_0.ogg",
+  "hit_metal_1.ogg",
+  "hit_metal_2.ogg",
+  "hit_metal_3.ogg",
+  "hit_metal_4.ogg",
+  "hit_metal_5.ogg",
+  "hit_metal_6.ogg",
+  "hit_metal_7.ogg"
+ ],
+ "thud": [
+  "thud_0.ogg",
+  "thud_1.ogg",
+  "thud_2.ogg",
+  "thud_3.ogg",
+  "thud_4.ogg",
+  "thud_5.ogg",
+  "thud_6.ogg",
+  "thud_7.ogg"
+ ],
+ "glass_break": [
+  "glass_break_0.ogg",
+  "glass_break_1.ogg",
+  "glass_break_2.ogg",
+  "glass_break_3.ogg",
+  "glass_break_4.ogg"
+ ],
+ "bell": [
+  "bell_0.ogg",
+  "bell_1.ogg",
+  "bell_2.ogg",
+  "bell_3.ogg",
+  "bell_4.ogg"
+ ],
+ "click": [
+  "click_0.ogg",
+  "click_1.ogg",
+  "click_2.ogg",
+  "click_3.ogg",
+  "click_4.ogg"
+ ],
+ "confirm": [
+  "confirm_0.ogg",
+  "confirm_1.ogg",
+  "confirm_2.ogg",
+  "confirm_3.ogg"
+ ],
+ "error": [
+  "error_0.ogg",
+  "error_1.ogg",
+  "error_2.ogg",
+  "error_3.ogg",
+  "error_4.ogg",
+  "error_5.ogg",
+  "error_6.ogg",
+  "error_7.ogg"
+ ],
+ "tick": [
+  "tick_0.ogg",
+  "tick_1.ogg",
+  "tick_2.ogg"
+ ],
+ "record_scratch": [
+  "record_scratch_0.ogg",
+  "record_scratch_1.ogg",
+  "record_scratch_2.ogg",
+  "record_scratch_3.ogg",
+  "record_scratch_4.ogg"
+ ],
+ "glitch": [
+  "glitch_0.ogg",
+  "glitch_1.ogg",
+  "glitch_2.ogg",
+  "glitch_3.ogg"
+ ],
+ "power_up": [
+  "power_up_0.ogg",
+  "power_up_1.ogg",
+  "power_up_2.ogg",
+  "power_up_3.ogg",
+  "power_up_4.ogg",
+  "power_up_5.ogg",
+  "power_up_6.ogg",
+  "power_up_7.ogg"
+ ],
+ "laser": [
+  "laser_0.ogg",
+  "laser_1.ogg",
+  "laser_2.ogg",
+  "laser_3.ogg",
+  "laser_4.ogg",
+  "laser_5.ogg",
+  "laser_6.ogg",
+  "laser_7.ogg"
+ ],
+ "zap": [
+  "zap_0.ogg",
+  "zap_1.ogg",
+  "zap_2.ogg",
+  "zap_3.ogg",
+  "zap_4.ogg",
+  "zap_5.ogg",
+  "zap_6.ogg",
+  "zap_7.ogg"
+ ],
+ "level_up": [
+  "level_up_0.ogg",
+  "level_up_1.ogg",
+  "level_up_2.ogg",
+  "level_up_3.ogg",
+  "level_up_4.ogg"
+ ]
+}

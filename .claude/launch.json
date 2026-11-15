@@ -1,0 +1,27 @@
+{
+  "version": "0.0.1",
+  "configurations": [
+    {
+      "name": "remotion-studio",
+      "runtimeExecutable": "npx",
+      "runtimeArgs": [
+        "remotion",
+        "studio",
+        "src/index.ts",
+        "--props=../data/jobs/43194b3c-4128-4171-8bf7-c0c43ab6c170/render_1/props.json",
+        "--public-dir=../data/jobs/43194b3c-4128-4171-8bf7-c0c43ab6c170/render_1/public",
+        "--port=3010",
+        "--no-open"
+      ],
+      "cwd": "renderer",
+      "port": 3010
+    },
+    {
+      "name": "dashboard",
+      "runtimeExecutable": "./run.sh",
+      "runtimeArgs": [],
+      "cwd": "dashboard",
+      "port": 3001
+    }
+  ]
+}

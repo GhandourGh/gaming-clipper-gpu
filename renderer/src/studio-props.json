@@ -1,0 +1,155 @@
+{
+ "captions": {
+  "emphasis": [
+   "Lucia",
+   "getting",
+   "out",
+   "Hey"
+  ],
+  "enabled": true,
+  "position": "middle",
+  "style": "pop",
+  "words": [
+   {
+    "e": 0.97,
+    "s": 0.89,
+    "w": "I'm"
+   },
+   {
+    "e": 1.13,
+    "s": 1.03,
+    "w": "here"
+   },
+   {
+    "e": 1.25,
+    "s": 1.17,
+    "w": "for"
+   },
+   {
+    "e": 1.59,
+    "s": 1.31,
+    "w": "Lucia"
+   },
+   {
+    "e": 2.03,
+    "s": 1.65,
+    "w": "Caminos."
+   },
+   {
+    "e": 2.69,
+    "s": 2.57,
+    "w": "She's"
+   },
+   {
+    "e": 2.87,
+    "s": 2.71,
+    "w": "supposed"
+   },
+   {
+    "e": 2.95,
+    "s": 2.89,
+    "w": "to"
+   },
+   {
+    "e": 3.02,
+    "s": 2.96,
+    "w": "be"
+   },
+   {
+    "e": 3.19,
+    "s": 3.03,
+    "w": "getting"
+   },
+   {
+    "e": 3.35,
+    "s": 3.23,
+    "w": "out."
+   },
+   {
+    "e": 7.63,
+    "s": 7.45,
+    "w": "Hey."
+   },
+   {
+    "e": 8.73,
+    "s": 8.51,
+    "w": "Hey."
+   }
+  ]
+ },
+ "duration": 8.8,
+ "fps": 30,
+ "hook": {
+  "duration": 2.5,
+  "text": "Picking her up from prison...",
+  "enabled": true
+ },
+ "layout": {
+  "facecamBox": null,
+  "facecamShare": 0.22,
+  "gameplayFocusX": 0.52,
+  "mode": "full"
+ },
+ "music": {
+  "duckDb": -10.0,
+  "file": "music.mp3",
+  "gainDb": -22.0
+ },
+ "overlays": [
+  {
+   "animation": "pop",
+   "end": 6.41,
+   "file": "assets/ov0.svg",
+   "kind": "emoji",
+   "position": "upper_right",
+   "start": 4.41,
+   "value": "\ud83d\udd13"
+  }
+ ],
+ "sfx": [
+  {
+   "at": 3.41,
+   "file": "sfx/whoosh.wav",
+   "gainDb": -12.0
+  },
+  {
+   "at": 8.11,
+   "file": "sfx/kenney/confirm_0.ogg",
+   "gainDb": -14.0
+  }
+ ],
+ "src": "base.mp4",
+ "srcH": 864,
+ "srcW": 1920,
+ "style": "viral",
+ "transitions": [
+  {
+   "at": 3.41,
+   "kind": "zoom_punch"
+  }
+ ],
+ "zooms": [
+  {
+   "end": 6.41,
+   "fx": 0.5,
+   "fy": 0.45,
+   "scale": 1.15,
+   "start": 3.91,
+   "style": "smooth",
+   "target": "gameplay"
+  },
+  {
+   "end": 8.8,
+   "fx": 0.55,
+   "fy": 0.45,
+   "scale": 1.2,
+   "start": 6.91,
+   "style": "punch",
+   "target": "gameplay"
+  }
+ ],
+ "captionScale": 1,
+ "captionOffsetY": 0,
+ "zoomScale": 1,
+ "logos": []
+}

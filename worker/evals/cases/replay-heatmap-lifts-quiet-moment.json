@@ -1,0 +1,3 @@
+{"name": "replay-heatmap-lifts-quiet-moment", "duration": 600, "seed": 3, "talk_db": -28,
+ "moments": [{"at": 100, "len": 4, "boost_db": 3}], "heat": [[98, 112]],
+ "max_candidates": 4, "expect": {"recall_min": 1.0, "candidates_min": 1, "candidates_max": 4}}

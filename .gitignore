@@ -1,0 +1,13 @@
+.env
+data/
+inbox/*
+!inbox/.gitkeep
+node_modules/
+.venv/
+renderer/out/
+renderer/public/job/
+vendor/
+reui/
+.next/
+*.log
+*.tgz

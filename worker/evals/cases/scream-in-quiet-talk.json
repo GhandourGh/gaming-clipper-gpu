@@ -1,0 +1,3 @@
+{"name": "scream-in-quiet-talk", "duration": 600, "seed": 1, "talk_db": -28,
+ "moments": [{"at": 120, "len": 4}, {"at": 330, "len": 4}, {"at": 500, "len": 5, "boost_db": 10}],
+ "max_candidates": 8, "expect": {"recall_min": 1.0, "candidates_min": 3, "candidates_max": 8}}

@@ -1,0 +1,2 @@
+All files here were synthesised with ffmpeg lavfi generators by this project.
+Original work, no third-party samples.
