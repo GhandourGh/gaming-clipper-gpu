@@ -516,7 +516,7 @@ def director_request(job_id, idx: int) -> dict:
                   f"Subtitles are visible in the {bc.get('where')} part of the source frame ({int(bc.get('coverage', 0) * 100)}% of sampled frames), "
                   f"e.g. {', '.join(repr(x) for x in (bc.get('examples') or [])[:3])}. Do NOT stack our captions on top of them: "
                   "set captions.enabled=false, unless the source captions are sparse and ours add real value; then set "
-                  f"captions.position to {'\'middle\'' if bc.get('where') == 'bottom' else '\'lower\''} so the two never overlap.\n\n")
+                  f"captions.position to '{caption_position}' so the two never overlap.\n\n")
         burned = burned.replace("captions.position to {'\\'middle\\'' if bc.get('where') == 'bottom' else '\\'lower\\''}", f"captions.position to '{caption_position}'")
     from .sfxlib import prompt_list
     from .trends import prompt_section
