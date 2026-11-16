@@ -9,6 +9,8 @@ ENV_FILE="${CLIPPER_ENV_FILE:-/workspace/clipper.env}"
 mkdir -p "$STATE" "$STATE/apt" "$STATE/hf"
 log() { echo "[$(date -u +%T)] $*"; }
 T0=$(date +%s)
+exec 9>/tmp/clipper-pod-run.lock  # one run at a time (boot, /api/setup and /admin/update can overlap)
+flock -w 600 9 || { log "another pod-run did not finish in 10 min; giving up"; exit 1; }
 
 # ---------- environment (loaded here, so every supervised process gets it) ----------
 if [[ -f "$ENV_FILE" ]]; then set -a; source "$ENV_FILE"; set +a; fi
@@ -91,9 +93,10 @@ if [[ -x "$PG_BIN/pg_ctl" ]]; then
     fresh=1
   fi
   chown -R postgres:postgres "$PG_DATA"; chmod 700 "$PG_DATA"; touch "$PG_LOG"; chown postgres "$PG_LOG"
-  rm -f "$PG_DATA/postmaster.pid"  # left behind when the Pod was stopped
-  runuser -u postgres -- "$PG_BIN/pg_ctl" -D "$PG_DATA" status >/dev/null 2>&1 \
-    || runuser -u postgres -- "$PG_BIN/pg_ctl" -D "$PG_DATA" -l "$PG_LOG" -o "-p 5435 -h 127.0.0.1" -w start >/dev/null
+  if ! runuser -u postgres -- "$PG_BIN/pg_ctl" -D "$PG_DATA" status >/dev/null 2>&1; then
+    rm -f "$PG_DATA/postmaster.pid"  # stale lock left by a stopped Pod (never removed while Postgres runs)
+    runuser -u postgres -- "$PG_BIN/pg_ctl" -D "$PG_DATA" -l "$PG_LOG" -o "-p 5435 -h 127.0.0.1" -w start >/dev/null
+  fi
   "${PSQL[@]}" --set=pw="$CLIPPER_DB_PASSWORD" <<'SQL' >/dev/null
 SELECT format('CREATE ROLE clipper LOGIN PASSWORD %L', :'pw') WHERE NOT EXISTS (SELECT FROM pg_roles WHERE rolname='clipper') \gexec
 SELECT 'CREATE DATABASE clipper OWNER clipper' WHERE NOT EXISTS (SELECT FROM pg_database WHERE datname='clipper') \gexec
@@ -137,7 +140,7 @@ if [[ ! -x "$NODE_DIR/bin/node" ]]; then
     && mkdir -p "$NODE_DIR" && tar --no-same-owner -xJf "$STATE/$NODE_FILE" -C "$NODE_DIR" --strip-components=1 && rm -f "$STATE/$NODE_FILE"
 fi
 export PATH="$NODE_DIR/bin:$PATH"
-REV="$(git -C "$ROOT" rev-parse HEAD 2>/dev/null || echo none)"
+REV="$(git -C "$ROOT" rev-parse HEAD:dashboard 2>/dev/null || echo none)"  # tree hash: rebuild only when the dashboard changed
 LOCK_SUM="$(sha256sum "$ROOT/dashboard/package-lock.json" | cut -c1-16)"
 if [[ "$(cat "$STATE/dashboard.lock" 2>/dev/null)" != "$LOCK_SUM" || ! -d "$ROOT/dashboard/node_modules" ]]; then
   log "npm ci (dashboard)"
