@@ -3,6 +3,7 @@ Signals: loudness spikes, high-frequency energy (screams/laughter), scene-cut
 density (action), speech bursts, exclamation keywords, plus facecam location.
 Each artefact is cached in the job folder so a retry resumes where it stopped."""
 import json
+import threading
 import platform
 import re
 import wave
@@ -183,8 +184,28 @@ def story_index_transcript(wav: Path, duration: float, feats: dict, cuts: list[f
     return tr
 
 
+_REFINE_LOCKS: dict[str, "threading.Lock"] = {}
+_REFINE_GUARD = threading.Lock()
+
+
+def _atomic_write(path: Path, text: str) -> None:
+    """Write whole or not at all: another thread reading the file never sees half of it."""
+    tmp = path.with_name(f".{path.name}.{threading.get_ident()}.tmp")
+    tmp.write_text(text)
+    tmp.replace(path)
+
+
 def refine_transcript(job_id: str, start: float, end: float) -> dict:
-    """Make sure [start, end] has an accurate word-level transcript (long sources are not transcribed up front)."""
+    """Make sure [start, end] has an accurate word-level transcript (long sources are not transcribed up front).
+    Read, transcribe a window, merge, write: one clip at a time per job. Several clips plan at once (the llm lane has
+    threads), and unlocked they overwrote each other's merge and left a half-written file ("Extra data" JSON errors)."""
+    with _REFINE_GUARD:
+        lock = _REFINE_LOCKS.setdefault(str(job_id), threading.Lock())
+    with lock:
+        return _refine_transcript_locked(job_id, start, end)
+
+
+def _refine_transcript_locked(job_id: str, start: float, end: float) -> dict:
     a = config.job_dir(job_id) / "analysis"
     path = a / "transcript.json"
     tr = json.loads(path.read_text())
@@ -205,7 +226,7 @@ def refine_transcript(job_id: str, start: float, end: float) -> dict:
     tr["segments"] = sorted([x for x in tr["segments"] if not (s <= x["s"] < e)] + [shift(x) for x in part["segments"]], key=lambda x: x["s"])
     tr["language"] = tr.get("language") or part.get("language")
     tr.setdefault(coverage_key, []).append([s, e])
-    path.write_text(json.dumps(tr))
+    _atomic_write(path, json.dumps(tr))
     db.event(job_id, "info", "analyze", f"transcribed clip window {s:.0f}-{e:.0f}s ({len(part['words'])} words)", {})
     return tr
 
