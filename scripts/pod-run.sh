@@ -115,7 +115,7 @@ VENV="$STATE/venv"
 [[ -x "$VENV/bin/python" ]] || python3 -m venv --system-site-packages "$VENV"
 REQS='fastapi>=0.115 uvicorn>=0.30 pydantic>=2.8 psycopg[binary,pool]>=3.2 python-dotenv>=1.0 python-multipart>=0.0.9
 numpy>=1.26 opencv-python-headless>=4.10,<5 httpx>=0.27 yt-dlp[default]>=2026.10.26 faster-whisper>=1.1 transformers>=4.46
-nvidia-cublas-cu12 nvidia-cudnn-cu12==9.*'
+nvidia-cublas-cu12 nvidia-cudnn-cu12==9.* av>=14'
 STAMP="$STATE/venv.reqs"
 if [[ "$(cat "$STAMP" 2>/dev/null)" != "$REQS" ]]; then
   log "pip install"

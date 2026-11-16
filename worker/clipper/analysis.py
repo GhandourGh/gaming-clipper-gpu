@@ -81,6 +81,19 @@ def _faster_model(name: str):
     return _FASTER_MODELS[short]
 
 
+def _wav_array(wav: Path):
+    """16 kHz mono PCM WAV -> float32 array, so faster-whisper skips its PyAV decoder (PyAV versions differ per image).
+    Any other format is passed as a path."""
+    import numpy as np
+    try:
+        with wave.open(str(wav), "rb") as w:
+            if w.getframerate() != 16000 or w.getnchannels() != 1 or w.getsampwidth() != 2:
+                return str(wav)
+            return np.frombuffer(w.readframes(w.getnframes()), dtype="<i2").astype(np.float32) / 32768.0
+    except (wave.Error, OSError):
+        return str(wav)
+
+
 def transcribe(wav: Path, vocab: str = "", model: str | None = None) -> dict:
     chosen = model or config.WHISPER_MODEL
     if platform.system() == "Darwin":
@@ -89,7 +102,7 @@ def transcribe(wav: Path, vocab: str = "", model: str | None = None) -> dict:
                                    condition_on_previous_text=False, initial_prompt=vocab or None)
     else:
         segments, info = _faster_model(chosen).transcribe(
-            str(wav), word_timestamps=True, condition_on_previous_text=False,
+            _wav_array(wav), word_timestamps=True, condition_on_previous_text=False,
             initial_prompt=vocab or None, vad_filter=True,
         )
         r = {
