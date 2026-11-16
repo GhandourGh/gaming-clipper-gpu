@@ -41,12 +41,13 @@ def story_ranges(job_id, c: dict) -> list[tuple[float, float]] | None:
     length = meta.get("length")
     total = sum(b - a for a, b in rs) + 3.0  # + a ~3 s cold-open teaser
     need = (length[0] + 2.0 - total) if length else 0.0
-    if length and need <= 0:
+    wider = float(meta.get("range_pad") or 0.0)  # pipeline.direct widened this clip's footage after a plan was rejected for leaving it
+    if length and need <= 0 and not wider:
         return [tuple(r) for r in rs]
     words = _load(config.job_dir(str(job_id)) / "analysis" / "transcript.json", {}).get("words") or []
     # no target length: a little room around every part (to the next pause) so the editor can finish the build-up
     # and the reaction; with a target length: enough to reach it
-    pad = min(10.0, need / (2 * len(rs)) + 0.5) if length else 4.0
+    pad = max(min(10.0, max(need, 0.0) / (2 * len(rs)) + 0.5) if length else 4.0, wider)
     order = sorted(range(len(rs)), key=lambda i: rs[i][0])
     for k, i in enumerate(order):
         lo = rs[order[k - 1]][1] + 0.5 if k else 0.0

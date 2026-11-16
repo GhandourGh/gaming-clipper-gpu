@@ -139,6 +139,24 @@ def plan(job_id, _idx=-1):
     return {"clips": len(chosen), "rank_seconds": rank_s}
 
 
+RANGE_PADS = (4.0, 16.0, 28.0, 36.0)  # seconds of footage allowed around each story part, widened one step per rejection
+
+
+def widen_ranges(job_id: str, idx: int) -> float:
+    """Allow the next plan of this clip more footage around its story parts (stored in the clip's options, read by
+    preguide.story_ranges). Returns the new margin. A clip that plans fine on its first try never gets here."""
+    row = db.q1("select candidate from clips where job_id=%s and idx=%s", (job_id, idx))
+    cand = dict((row or {}).get("candidate") or {})
+    opts = dict(cand.get("opts") or {})
+    cur = float(opts.get("range_pad") or RANGE_PADS[0])
+    nxt = next((p for p in RANGE_PADS if p > cur), RANGE_PADS[-1])
+    opts["range_pad"] = nxt
+    cand["opts"] = opts
+    db.q("update clips set candidate=%s where job_id=%s and idx=%s", (db.J(cand), job_id, idx))
+    db.event(job_id, "info", "director", f"clip {idx}: plan left the story's footage; allowing {nxt:.0f} s around each part", {})
+    return nxt
+
+
 @stage("direct")
 def direct(job_id, idx):
     """Director plan (repaired up to 3 times), licensed assets and music; then the render stage."""
@@ -149,6 +167,8 @@ def direct(job_id, idx):
         res = gemini.save_edl(job_id, idx, llm(job_id, "director", req, lambda: gemini.director_request(job_id, idx)))
         if res.get("valid") or not res.get("retry"):
             break
+        if any("outside the evidence-backed story ranges" in str(e) for e in res.get("errors") or []):
+            widen_ranges(job_id, idx)  # the AI wants the build-up before a short story part: allow more footage for the next attempt
     clip = db.q1("select status from clips where job_id=%s and idx=%s", (job_id, idx))
     if not res.get("valid"):
         if clip and clip["status"] == "ready_for_review":  # a failed redo kept the first good version
