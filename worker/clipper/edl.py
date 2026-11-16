@@ -216,6 +216,23 @@ def check(edl: EDL, win_start: float, win_end: float, length: tuple[float, float
         edl, ramp_notes = apply_ramps(edl, int(_eff(job_meta, _ST[edl.style]["limits"]).get("ramps_max", 0)))
         warnings += ramp_notes
     segs = list(edl.segments)
+    if allowed_ranges:  # repair, don't reject: trim a segment into the story range it overlaps; drop one with no overlap
+        fixed = []
+        for s in segs:
+            if any(s.start >= a - 1.0 and s.end <= b + 1.0 for a, b in allowed_ranges):
+                fixed.append(s)
+                continue
+            best = max(allowed_ranges, key=lambda r: min(s.end, r[1]) - max(s.start, r[0]))
+            ov_start, ov_end = max(s.start, best[0]), min(s.end, best[1])
+            if ov_end - ov_start >= 0.8:
+                warnings.append(f"segment {s.start:.2f}-{s.end:.2f} trimmed to {ov_start:.2f}-{ov_end:.2f} (inside the story range)")
+                s.start, s.end = round(ov_start, 3), round(ov_end, 3)
+                fixed.append(s)
+            else:
+                warnings.append(f"segment {s.start:.2f}-{s.end:.2f} dropped (outside the evidence-backed story ranges)")
+        if fixed and any(x.role == "main" for x in fixed):
+            segs = fixed
+            edl = edl.model_copy(update={"segments": segs})
     colds = [s for s in segs if s.role == "cold_open"]
     mains = sorted((s for s in segs if s.role == "main"), key=lambda s: s.start)
     if not mains:
