@@ -48,7 +48,7 @@ fi
 
 # ---------- ffmpeg with NVENC + libass (pick the first build that really encodes on this GPU) ----------
 nvenc_ok() { "$1" -hide_banner -loglevel error -f lavfi -i testsrc2=size=256x256:rate=30 -t 0.5 -c:v h264_nvenc -f null - 2>/dev/null \
-             && "$1" -hide_banner -filters 2>/dev/null | grep -qE '^ ... ass '; }
+             && "$1" -hide_banner -filters 2>/dev/null | grep -qE '^ +[A-Z.]+ +ass +'; }  # flags column is 2 or 3 chars depending on the ffmpeg version
 FFDIR="$STATE/ffmpeg"
 pick=""
 for cand in "$FFDIR/current/bin/ffmpeg"; do [[ -x "$cand" ]] && nvenc_ok "$cand" && pick="$cand"; done
@@ -57,7 +57,7 @@ if [[ -z "$pick" ]]; then
     if [[ ! -x "$FFDIR/$build/bin/ffmpeg" ]]; then
       log "downloading $build"
       mkdir -p "$FFDIR" && curl -fsSL "https://github.com/BtbN/FFmpeg-Builds/releases/download/latest/$build.tar.xz" -o "$FFDIR/$build.tar.xz" \
-        && tar -xJf "$FFDIR/$build.tar.xz" -C "$FFDIR" && rm -f "$FFDIR/$build.tar.xz"
+        && tar --no-same-owner -xJf "$FFDIR/$build.tar.xz" -C "$FFDIR" && rm -f "$FFDIR/$build.tar.xz"
     fi
     if [[ -x "$FFDIR/$build/bin/ffmpeg" ]] && nvenc_ok "$FFDIR/$build/bin/ffmpeg"; then
       ln -sfn "$FFDIR/$build" "$FFDIR/current"; pick="$FFDIR/current/bin/ffmpeg"; break
@@ -134,7 +134,7 @@ if [[ ! -x "$NODE_DIR/bin/node" ]]; then
   NODE_FILE="$(awk '/linux-x64.tar.xz$/ {print $2; exit}' "$STATE/node-shasums.txt")"
   curl -fsSL "https://nodejs.org/dist/latest-v22.x/$NODE_FILE" -o "$STATE/$NODE_FILE" \
     && (cd "$STATE" && grep " $NODE_FILE\$" node-shasums.txt | sha256sum -c - >/dev/null) \
-    && mkdir -p "$NODE_DIR" && tar -xJf "$STATE/$NODE_FILE" -C "$NODE_DIR" --strip-components=1 && rm -f "$STATE/$NODE_FILE"
+    && mkdir -p "$NODE_DIR" && tar --no-same-owner -xJf "$STATE/$NODE_FILE" -C "$NODE_DIR" --strip-components=1 && rm -f "$STATE/$NODE_FILE"
 fi
 export PATH="$NODE_DIR/bin:$PATH"
 REV="$(git -C "$ROOT" rev-parse HEAD 2>/dev/null || echo none)"
