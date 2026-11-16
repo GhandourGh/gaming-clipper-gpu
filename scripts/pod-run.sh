@@ -163,7 +163,7 @@ supervise() {  # supervise NAME CMD...: restart CMD 3 s after it exits, forever;
   local name="$1"; shift
   stop_sup "$name"
   setsid bash -c 'while true; do echo "== start $(date -u +%FT%TZ)"; "$@"; echo "== exited $? $(date -u +%FT%TZ)"; sleep 3; done' _ "$@" \
-    >>"$STATE/$name.log" 2>&1 < /dev/null &
+    >>"$STATE/$name.log" 2>&1 < /dev/null 9>&- &  # 9>&-: services must not inherit (and hold) the pod-run lock
   echo $! > "$STATE/$name.sup.pid"
 }
 pkill -f "uvicorn clipper.main:app" 2>/dev/null; pkill -f "next start" 2>/dev/null; pkill -f "next-server" 2>/dev/null; sleep 1
