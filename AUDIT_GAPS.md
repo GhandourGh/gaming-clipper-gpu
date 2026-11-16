@@ -121,3 +121,17 @@ code changes; root cause now reports `plan_failed` instead of "no clip passed QC
 
 **Known oddities:** BtbN ffmpeg sometimes fails the NVENC self-test right at container start (the Ubuntu ffmpeg is then
 used, also NVENC); `/ready` shows the git rev on disk, not the running process.
+
+## 7. Final GPU result (2026-11-16, Pod 450zka4in4rhhk on network volume w68676prj3, EU-RO-1)
+
+**A finished clip passes QC on the GPU.** GTA 6 trailer job `be3890a6` (2 min 47 s source, template gta6_gameplay):
+2 clips, **both QC-passed (ready_for_review)**, 1080x1920 30 fps H.264+AAC, 14 s and 47 s, GTA VI logo, NVENC render 4.7-9 s
+(whole render stage 15-33 s). Files saved locally in ~/Desktop/clipper-clips/.
+Stage times (47 s reaction clip): download 0.5 s, analysis (Whisper CUDA) 5-18 s, AI ranking 13-17 s, edit plan 22-86 s, render 15 s, QC 2 s.
+
+**Known open case:** continuous-speech reaction clip (c409a485): QC fails `ends_mid_sentence`/`end_room` because the speaker talks
+nonstop with no sentence-ending punctuation near the cut and the per-job AI budget ($0.30) is spent. Gameplay footage is unaffected.
+**Not verified:** Telegram (off by request), moderation (off), the dashboard player in a browser, restart of the Pod on the
+network volume (expected ~1-2 min), live Twitch recording.
+**Mac:** old launch agents (worker/dashboard/awake/dependencies) and the n8n clipper workflows are unchanged and unused.
+**Keys to revoke:** the Gemini key and the Runpod API key were pasted in chat.
