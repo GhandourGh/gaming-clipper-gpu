@@ -755,7 +755,9 @@ def save_edl(job_id, idx: int, resp: dict) -> dict:
                     edl.captions.position = "lower"
         warnings = snap_notes + warnings
         if mid:  # repaired on the first two attempts; the last one keeps the clip with a warning instead of failing it
-            (errors if prior < 2 else warnings).append(mid)
+            from . import budget as _budget
+            last_try = prior >= 2 or bool(_budget.blocked(job_id, _budget.EST["director"] * 2))  # no retry is coming
+            (warnings if last_try else errors).append(mid)
     except ValidationError as e:
         errors = [f"{'.'.join(map(str, x['loc']))}: {x['msg']}" for x in e.errors()]
     except (ValueError, json.JSONDecodeError) as e:
