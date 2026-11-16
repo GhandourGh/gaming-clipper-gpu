@@ -11,3 +11,7 @@ reui/
 .next/
 *.log
 *.tgz
+.pytest_cache/
+__pycache__/
+*.pyc
+*.tsbuildinfo

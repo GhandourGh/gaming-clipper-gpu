@@ -4,4 +4,4 @@ export PATH="/Users/macos/.local/bin:/opt/homebrew/bin:/usr/local/bin:/usr/bin:/
 cd "$(dirname "$0")"
 docker compose -p gaming-clipper -f ../compose.yaml up -d >/dev/null
 PORT=$(grep -E '^CLIPPER_PORT=' ../.env | cut -d= -f2)
-exec .venv/bin/python -m uvicorn clipper.main:app --host 127.0.0.1 --port "${PORT:-8787}" --log-level warning
+exec .venv/bin/python -m uvicorn clipper.main:app --host "${CLIPPER_HOST:-127.0.0.1}" --port "${PORT:-8787}" --log-level warning

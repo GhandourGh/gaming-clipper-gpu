@@ -7,7 +7,7 @@ import uuid
 from pathlib import Path
 
 OUT = Path(__file__).resolve().parents[1] / "data" / "n8n_build"  # gitignored: contains your chat id
-WORKER = "http://host.docker.internal:8787"
+WORKER = "https://rfbevtshgimov3-8787.proxy.runpod.net"
 GEMINI = "https://generativelanguage.googleapis.com/v1beta/models/{{ $json.model }}:generateContent"
 CRED_TOKEN = {"httpHeaderAuth": {"id": "clipperWorkerTk1", "name": "Clipper worker token"}}
 CRED_GEMINI = {"googlePalmApi": {"id": "FNSfjIWeCx9X7gZ9", "name": "Google Gemini(PaLM) Api account"}}

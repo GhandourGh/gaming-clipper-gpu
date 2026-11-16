@@ -1,4 +1,5 @@
 import os
+import platform
 from pathlib import Path
 from dotenv import load_dotenv
 
@@ -19,9 +20,10 @@ DB_DSN = os.environ.get(
     "CLIPPER_DB_DSN",
     f"postgresql://clipper:{os.environ.get('CLIPPER_DB_PASSWORD', '')}@127.0.0.1:5435/clipper",
 )
-WHISPER_MODEL = os.environ.get("WHISPER_MODEL", "mlx-community/whisper-large-v3-turbo")
+_MAC = platform.system() == "Darwin"
+WHISPER_MODEL = os.environ.get("WHISPER_MODEL", "mlx-community/whisper-large-v3-turbo" if _MAC else "large-v3-turbo")
 # Full multi-hour story indexing values coverage and speed; selected beats are re-transcribed with WHISPER_MODEL.
-STORY_WHISPER_MODEL = os.environ.get("STORY_WHISPER_MODEL", "mlx-community/whisper-base-mlx")
+STORY_WHISPER_MODEL = os.environ.get("STORY_WHISPER_MODEL", "mlx-community/whisper-base-mlx" if _MAC else "base")
 GEMINI_MODEL = os.environ.get("GEMINI_MODEL", "gemini-3.1-flash-lite")
 STREAM_SECTION_S = float(os.environ.get("STREAM_SECTION_S", "2400"))  # long YouTube videos: download only the best 40 min
 FULL_TRANSCRIBE_MAX_S = float(os.environ.get("FULL_TRANSCRIBE_MAX_S", "2700"))  # longer sources: transcribe only the clip windows

@@ -6,10 +6,12 @@ export async function proxy(request: NextRequest) {
   if (!expected) return new NextResponse("Dashboard is not configured", { status: 503 });
   const supplied = request.cookies.get(cookieName)?.value || "";
   if (request.nextUrl.pathname.startsWith("/api/") && supplied !== expected) {
-    return Response.json({ error: "Dashboard session required" }, { status: 401 });
+    const response = NextResponse.json({ error: "Dashboard session refreshed; retrying." }, { status: 401 });
+    response.cookies.set(cookieName, expected, { httpOnly: true, sameSite: "lax", secure: request.nextUrl.protocol === "https:", path: "/" });
+    return response;
   }
   const response = NextResponse.next();
-  if (supplied !== expected) response.cookies.set(cookieName, expected, { httpOnly: true, sameSite: "strict", secure: false, path: "/" });
+  if (supplied !== expected) response.cookies.set(cookieName, expected, { httpOnly: true, sameSite: "lax", secure: request.nextUrl.protocol === "https:", path: "/" });
   return response;
 }
 

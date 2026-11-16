@@ -3,6 +3,7 @@ Signals: loudness spikes, high-frequency energy (screams/laughter), scene-cut
 density (action), speech bursts, exclamation keywords, plus facecam location.
 Each artefact is cached in the job folder so a retry resumes where it stopped."""
 import json
+import platform
 import re
 import wave
 from pathlib import Path
@@ -59,10 +60,42 @@ def vocabulary(job: dict, src: Path) -> str:
     return text[:400]
 
 
+_FASTER_MODELS = {}
+
+
+def _faster_model(name: str):
+    """Load and cache the CUDA Whisper model used by the Linux GPU worker."""
+    from faster_whisper import WhisperModel
+    # Accept the existing MLX names if a shared configuration reaches Linux.
+    short = name.rsplit("/", 1)[-1].replace("whisper-", "").replace("-mlx", "")
+    if short not in _FASTER_MODELS:
+        try:
+            _FASTER_MODELS[short] = WhisperModel(short, device="cuda", compute_type="float16")
+        except Exception:
+            # A CPU fallback keeps diagnostics and non-GPU development usable.
+            _FASTER_MODELS[short] = WhisperModel(short, device="cpu", compute_type="int8")
+    return _FASTER_MODELS[short]
+
+
 def transcribe(wav: Path, vocab: str = "", model: str | None = None) -> dict:
-    import mlx_whisper  # heavy import, keep lazy
-    r = mlx_whisper.transcribe(str(wav), path_or_hf_repo=model or config.WHISPER_MODEL, word_timestamps=True,
-                               condition_on_previous_text=False, initial_prompt=vocab or None)
+    chosen = model or config.WHISPER_MODEL
+    if platform.system() == "Darwin":
+        import mlx_whisper  # heavy import, keep lazy
+        r = mlx_whisper.transcribe(str(wav), path_or_hf_repo=chosen, word_timestamps=True,
+                                   condition_on_previous_text=False, initial_prompt=vocab or None)
+    else:
+        segments, info = _faster_model(chosen).transcribe(
+            str(wav), word_timestamps=True, condition_on_previous_text=False,
+            initial_prompt=vocab or None, vad_filter=True,
+        )
+        r = {
+            "language": info.language,
+            "segments": [{
+                "start": s.start, "end": s.end, "text": s.text,
+                "no_speech_prob": s.no_speech_prob,
+                "words": [{"word": w.word, "start": w.start, "end": w.end} for w in (s.words or [])],
+            } for s in segments],
+        }
     words, segs = [], []
     for s in r.get("segments", []):
         if s.get("no_speech_prob", 0) > 0.8:
