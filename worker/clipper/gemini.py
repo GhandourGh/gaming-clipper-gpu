@@ -608,11 +608,14 @@ def _snap(job_id, edl: EDL, c: dict) -> tuple[EDL, list[str], str | None]:
         more = [w for w in tr["words"] if last_main["end"] - 0.02 <= w["s"] <= last_main["end"] + 8.0]
         fin = next((w for w in more if timing.SENT_END.search(w["w"])), None)
         prev = [w for w in words if w["e"] <= last_main["end"] and w["s"] > last_main["start"] + 2.0 and timing.SENT_END.search(w["w"])]
+        def _room(w):  # a beat after the line (QC wants >= 0.35 s, ideally 0.5), never into the next word
+            nxt = next((x["s"] for x in tr["words"] if x["s"] > w["e"] + 0.01), None)
+            return max(0.0, min(0.6, (nxt - 0.08 - w["e"]) if nxt is not None else 0.6))
         if fin:
-            last_main["end"] = round(fin["e"] + 0.35, 3)
+            last_main["end"] = round(fin["e"] + _room(fin), 3)
             notes.append(f"ending moved to {last_main['end']:.2f}s so the sentence finishes")
         elif prev:
-            last_main["end"] = round(prev[-1]["e"] + 0.35, 3)
+            last_main["end"] = round(prev[-1]["e"] + _room(prev[-1]), 3)
             notes.append(f"ending moved back to {last_main['end']:.2f}s, the end of the previous sentence")
         edl = edl.model_copy(update={"segments": [type(edl.segments[0]).model_validate(s) for s in snapped]})
     # nonstop speech has no pause to snap to: never leave a cut INSIDE a word, cut on the word's edge instead
