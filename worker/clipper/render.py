@@ -242,6 +242,9 @@ def build_props(job_id, idx, edl: EDL, base_info: dict, tr: dict | None = None) 
         trans.append({"at": back, "kind": "flash"})
         sfx.append({"at": max(0.0, back - 0.12), "file": "sfx/whoosh.wav", "gainDb": -6})
     lay = edl.layout
+    from .templates import gta_geometry
+    geo = gta_geometry(job_meta.get("gameplay_crop"), lay.facecam_box.model_dump() if lay.facecam_box else None,
+                       base_info["width"], base_info["height"], job_meta.get("facecam_size")) if gta else None
     logo_slug = job_meta.get("game_logo") or "gta6"
     logo_on = gta and logo_slug != "none" and (config.RENDERER / "public" / "logos" / f"{logo_slug}.png").exists()
     return {"style": edl.style, "fps": FPS, "duration": round(dur, 3), "src": "base.mp4", "srcW": base_info["width"], "srcH": base_info["height"],
@@ -249,10 +252,11 @@ def build_props(job_id, idx, edl: EDL, base_info: dict, tr: dict | None = None) 
             "layout": {"mode": lay.mode, "facecamBox": lay.facecam_box.model_dump() if lay.facecam_box else None,
                        "gameplayFocusX": lay.gameplay_focus_x, "facecamShare": 0.5 if lay.mode == "split" else lay.facecam_share,
                        "bubbleCorner": lay.bubble_corner, "bubbleShape": lay.bubble_shape, "bubbleSize": lay.bubble_size,
-                       "captionBar": cap_mode == "bar" and lay.mode == "split" and edl.captions.enabled},
+                       "captionBar": cap_mode == "bar" and lay.mode == "split" and edl.captions.enabled,
+                       **({"fitH": geo["fitH"], "fitTop": geo["fitTop"], "cam": geo["cam"]} if geo else {})},
             "zooms": zooms, "captions": {**edl.captions.model_dump(), "words": words if edl.captions.enabled else []},
             "overlays": overlays, "sfx": sfx, "transitions": trans, "hook": {**edl.hook.model_dump(), "enabled": not gta}, "music": _music_props(edl),
-            "captionScale": 0.78 if gta else 1, "captionOffsetY": 80 if gta else 0, "zoomScale": 1,
+            "captionScale": 0.9 if gta else 1, "captionOffsetY": 0, "captionY": geo["captionY"] if geo else None, "zoomScale": 1,
             "logos": ([{"file": f"logos/{logo_slug}.png", "x": 0.82, "y": 0.105, "w": 285, "opacity": 0.94}] if logo_on else [])}
 
 
@@ -336,8 +340,10 @@ def render(job_id, idx):
             ga = gameplay_area(_gray_frames(pub / "base.mp4", bi["duration"], 16), edl.layout.facecam_box.model_dump())
             ga_file.write_text(json.dumps({"seg": seg_stamp.read_text(), "area": ga}))
         props["layout"]["gameplayArea"] = _without_cam(json.loads(ga_file.read_text())["area"], edl.layout.facecam_box.model_dump())
-    props["layout"]["gameplayFocusPath"] = _reframe_path(rd, pub / "base.mp4", edl, bi, props["layout"].get("gameplayArea"),
-                                                        (clip.get("candidate") or {}).get("content_type"), seg_stamp.read_text())
+    fixed_crop = props.get("template") == "gta6_gameplay" and ((job["meta"] or {}).get("gameplay_crop") or "center") != "auto"
+    props["layout"]["gameplayFocusPath"] = None if fixed_crop else _reframe_path(  # a chosen crop (centred, left, right, whole) never moves
+        rd, pub / "base.mp4", edl, bi, props["layout"].get("gameplayArea"),
+        (clip.get("candidate") or {}).get("content_type"), seg_stamp.read_text())
     if edl.layout.mode == "fit":
         _blur_bg(pub / "base.mp4", pub / "bg.mp4")
         props["bgSrc"] = "bg.mp4"

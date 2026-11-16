@@ -221,10 +221,10 @@ export const Clip: React.FC<ClipProps> = (p) => {
 
   const camH = Math.round(H * facecamShare);
   const barH = mode === "split" && p.layout.captionBar ? 200 : 0; // captions in their own strip: they cover neither cam nor game
-  const fitH = Math.round(W * 1.12);
-  const fitTop = 300; // card spans 300..1510: clear of the hook area and the bottom platform UI
+  const fitH = p.layout.fitH ?? Math.round(W * 1.12);
+  const fitTop = p.layout.fitTop ?? 300; // default card spans 300..1510: clear of the hook area and the bottom platform UI
   const th = theme(p);
-  const captionY = barH ? camH + barH / 2 : mode === "split" ? (p.captions.position === "lower" ? H * th.lowerY : camH + 40)
+  const captionY = p.captionY ? p.captionY : barH ? camH + barH / 2 : mode === "split" ? (p.captions.position === "lower" ? H * th.lowerY : camH + 40)
     : mode === "fit" ? fitTop + fitH - 140
     : p.captions.position === "lower" ? H * th.lowerY : H * 0.58;
 
@@ -250,6 +250,12 @@ export const Clip: React.FC<ClipProps> = (p) => {
               <Region p={p} w={W} h={H} box={null} focusX={gx} muted zoom={{ s: 1.15, fx: 0.5, fy: 0.5 }} style={{ filter: "blur(38px) brightness(0.45) saturate(1.3)" }} />
             )}
             <Region p={p} w={W} h={fitH} box={null} focusX={gx} muted={false} zoom={zg} style={{ top: fitTop, borderRadius: 36, boxShadow: "0 30px 80px rgba(0,0,0,0.6)" }} />
+            {p.layout.cam && facecamBox && ( // webcam card (GTA 6 template): only the webcam, white ring, top centre
+              <div style={{ position: "absolute", left: p.layout.cam.x, top: p.layout.cam.y, width: p.layout.cam.w, height: p.layout.cam.h,
+                borderRadius: p.layout.cam.radius, overflow: "hidden", border: "7px solid #fff", boxSizing: "border-box", boxShadow: "0 14px 34px rgba(0,0,0,0.42)" }}>
+                <Region p={p} w={p.layout.cam.w} h={p.layout.cam.h} box={facecamBox} muted zoom={zf} style={{ left: 0, top: 0 }} />
+              </div>
+            )}
           </>
         ) : (
           <Region p={p} w={W} h={H} box={null} focusX={gx} muted={false} zoom={zg} />

@@ -283,6 +283,8 @@ def build_ass(p: dict, caption_y: float) -> str:
 
 
 def caption_y(p: dict) -> float:
+    if p.get("captionY"):  # a template that fixes the caption row (GTA 6: right under the webcam card)
+        return float(p["captionY"])
     th = THEMES.get(p.get("style") or "viral", THEMES["viral"])
     lay = p["layout"]
     cam_h = round(H * lay["facecamShare"])
@@ -411,19 +413,41 @@ def render(p: dict, pub: Path, out: Path, work: Path) -> None:
         fc.append(f"[game][rings]overlay=x='{bx}-{ring // 2}':y='{by}-{ring // 2}':eval=frame:shortest=1[g1]")
         fc.append(f"[g1][cams]overlay=x='{bx}':y='{by}':eval=frame:shortest=1[base]")
     elif mode == "fit":
-        fit_h, fit_top = round(W * 1.12) // 2 * 2, 300
-        if p.get("bgSrc") and (pub / p["bgSrc"]).exists():
+        fit_h, fit_top = (lay.get("fitH") or round(W * 1.12)) // 2 * 2, lay.get("fitTop") or 300
+        cam = lay.get("cam") if lay.get("facecamBox") else None  # webcam card (GTA 6 template), drawn over the blurred background
+        has_bg = bool(p.get("bgSrc") and (pub / p["bgSrc"]).exists())
+        srcs = ["gsrc"] + (["csrc"] if cam else []) + ([] if has_bg else ["bsrc"])
+        if len(srcs) > 1:
+            fc.append("[0:v]split=%d%s" % (len(srcs), "".join(f"[{x}]" for x in srcs)))
+        g_in, c_in, b_in = ("gsrc" if len(srcs) > 1 else "0:v"), "csrc", "bsrc"
+        if has_bg:
             bi = add_input(["-i", str(pub / p["bgSrc"])])
             fc.append(f"[{bi}:v]scale={W}:{H}:flags=bilinear,setsar=1,fps=30[bg]")
         else:
-            fc.append(f"[0:v]scale=-2:320,crop=180:320,boxblur=12:2,eq=brightness=-0.12,scale={W}:{H},setsar=1[bg]")
+            fc.append(f"[{b_in}]scale=-2:320,crop=180:320,boxblur=12:2,eq=brightness=-0.12,scale={W}:{H},setsar=1[bg]")
         write_mask(work / "card_mask.pgm", W, fit_h, 36)
         mi = add_input(["-loop", "1", "-framerate", "30", "-i", str(work / "card_mask.pgm")])
         gr, gxe = gcrop(W, fit_h)
-        fc.append(_region("0:v", "card0", gr, W, fit_h, zg, shake, gxe))
+        fc.append(_region(g_in, "card0", gr, W, fit_h, zg, shake, gxe))
         fc.append(f"[{mi}:v]format=gray,setsar=1[cmk]")
         fc.append("[card0][cmk]alphamerge[card]")
-        fc.append(f"[bg][card]overlay=0:{fit_top}:shortest=1[base]")
+        if not cam:
+            fc.append(f"[bg][card]overlay=0:{fit_top}:shortest=1[base]")
+        else:
+            fc.append(f"[bg][card]overlay=0:{fit_top}:shortest=1[b0]")
+            cw_, ch_, cx, cy, rad = cam["w"], cam["h"], cam["x"], cam["y"], cam.get("radius", 36)
+            write_mask(work / "cam_mask.pgm", cw_, ch_, rad)
+            write_mask(work / "cam_ring.pgm", cw_ + 14, ch_ + 14, rad + 7)
+            cmi = add_input(["-loop", "1", "-framerate", "30", "-i", str(work / "cam_mask.pgm")])
+            cri = add_input(["-loop", "1", "-framerate", "30", "-i", str(work / "cam_ring.pgm")])
+            fc.append(_region(c_in, "camr", cover_rect(sw, sh, cw_, ch_, lay["facecamBox"]), cw_, ch_, zf))
+            fc.append(f"[{cmi}:v]format=gray,setsar=1[cmm]")
+            fc.append("[camr][cmm]alphamerge,format=yuva420p[camc]")
+            fc.append(f"color=c=white:s={cw_ + 14}x{ch_ + 14}:r=30,format=yuv420p,setsar=1[wh]")
+            fc.append(f"[{cri}:v]format=gray,setsar=1[rgm]")
+            fc.append("[wh][rgm]alphamerge,format=yuva420p[ringc]")
+            fc.append(f"[b0][ringc]overlay=x={cx - 7}:y={cy - 7}:shortest=1[b1]")
+            fc.append(f"[b1][camc]overlay=x={cx}:y={cy}:shortest=1[base]")
     else:
         gr, gxe = gcrop(W, H)
         fc.append(_region("0:v", "base", gr, W, H, zg, shake, gxe))

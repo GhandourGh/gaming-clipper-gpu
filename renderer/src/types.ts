@@ -13,7 +13,8 @@ export type ClipProps = {
   srcH: number;
   layout: { mode: "split" | "bubble" | "full" | "fit"; facecamBox: Box | null; gameplayFocusX: number; facecamShare: number;
     bubbleCorner?: "top_left" | "top_right" | "mid_left" | "mid_right"; bubbleShape?: "circle" | "rounded"; bubbleSize?: number;
-    gameplayArea?: Box | null; captionBar?: boolean };
+    gameplayArea?: Box | null; captionBar?: boolean;
+    fitH?: number; fitTop?: number; cam?: { x: number; y: number; w: number; h: number; radius: number } | null }; // "fit" layout geometry (GTA 6 template)
   zooms: { start: number; end: number; target: "gameplay" | "facecam" | "frame"; scale: number; fx: number; fy: number; style: "punch" | "smooth" }[];
   captions: { enabled: boolean; style: "pop" | "karaoke"; position: "middle" | "lower"; emphasis: string[]; words: Word[] };
   overlays: { kind: "emoji" | "text" | "image"; start: number; end: number; value: string; file: string | null; position: "top" | "center" | "upper_left" | "upper_right"; animation: "pop" | "slide_up" | "shake" }[];
@@ -23,6 +24,7 @@ export type ClipProps = {
   music: { file: string; gainDb: number; duckDb?: number } | null;
   // --- editor extras (all optional; edit them in Remotion Studio's props panel) ---
   captionScale?: number;   // 1 = default size, 1.3 = 30% bigger
+  captionY?: number | null; // absolute caption row (a template that fixes it); overrides the per-mode position
   captionOffsetY?: number; // pixels, negative = up
   logos?: { file: string; x: number; y: number; w: number; start?: number; end?: number; opacity?: number }[]; // file inside public/ (e.g. logos/me.png); x,y = centre as 0-1 of the screen; w = width in px
   zoomScale?: number;      // multiplies every zoom's strength: 0 = no zooms, 1 = as planned, 1.5 = stronger

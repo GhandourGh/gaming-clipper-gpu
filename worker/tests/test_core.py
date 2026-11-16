@@ -832,9 +832,10 @@ def test_layout_templates(monkeypatch, tmp_path):
     (tmp_path / "analysis" / "facecam_clip_0.json").write_text(json.dumps({"found": True, "box": {"x": 0.02, "y": 0.6, "w": 0.2, "h": 0.3}}))
     gta, note = templates.apply_template("j", edl, {"idx": 0}, "gta6_gameplay",
                                          {"facecam_size": "medium", "facecam_position": "top_left", "gameplay_crop": "right"})
-    assert gta.layout.mode == "bubble" and gta.layout.bubble_shape == "rounded" and gta.layout.bubble_corner == "top_left"
-    assert gta.layout.bubble_size == 0.42 and gta.layout.gameplay_focus_x == 0.78
-    assert not gta.captions.enabled and not gta.zooms and not gta.sfx and not gta.transitions and "GTA 6" in note
+    assert gta.layout.mode == "fit" and gta.layout.facecam_box is not None  # wide centred card on a blurred copy, webcam card on top
+    assert gta.layout.gameplay_focus_x == 0.78  # the chosen crop side
+    assert gta.captions.enabled and not gta.zooms and not gta.sfx and not gta.transitions and "GTA 6" in note  # captions stay on
+    assert templates.apply_template("j", edl, {"idx": 0}, "gta6_gameplay", {})[0].layout.gameplay_focus_x == 0.5  # default: centred
     (tmp_path / "analysis" / "facecam_clip_0.json").unlink()
     gta_no_cam = templates.apply_template("j", nocam, {"idx": 0}, "gta6_gameplay", {"gameplay_crop": "fit"})[0]
     assert gta_no_cam.layout.mode == "fit" and gta_no_cam.layout.facecam_box is None

@@ -100,8 +100,8 @@ export function NewJob() {
   const pickTemplate = (value: string) => {
     setTemplate(value);
     if (value === "gta6_gameplay") {
-      setCaptions("off");
-      setLook("clean");
+      setCaptions("overlay");   // captions stay on: karaoke, right under the webcam card
+      setLook("karaoke");
       setOpt(o => ({ ...o, zoom: "off", sfx: "off" }));
     } else setClipStrategy("single");
   };
@@ -202,14 +202,13 @@ export function NewJob() {
               <label key={t.id}><input type="radio" name="template" value={t.id} checked={template === t.id} onChange={() => pickTemplate(t.id)}/>
                 <span><i className={`tmpl-pic ${t.id}`} aria-hidden="true"><b/><b/></i>{t.label}</span></label>
             ))}</div>
-            <small>{template === "gta6_gameplay" ? "Gameplay stays full-screen. A detected facecam is lifted into a quiet corner card; clips without one stay gameplay-only." : "Auto adapts to the footage and keeps the gameplay visible. Split puts the webcam on top."}</small></div>
+            <small>{template === "gta6_gameplay" ? "Wide, centred gameplay on a blurred copy of the video (no black bars), the streamer's webcam in a card at the top centre and your captions right under it. Clips without a webcam show the gameplay only." : "Auto adapts to the footage and keeps the gameplay visible. Split puts the webcam on top."}</small></div>
           {template === "gta6_gameplay" && <div className="template-settings wide" aria-label="GTA 6 template settings">
-            <div className="template-preview" aria-label="Preview: gameplay background, facecam upper left, logo upper right"><i/><b>VI</b></div>
+            <div className="template-preview" aria-label="Preview: webcam card top centre, captions under it, wide gameplay card below, logo upper right"><i/><b>VI</b></div>
             <div className="template-controls">
               <label className="field"><span>Facecam size</span><select name="facecam_size" defaultValue="medium"><option value="small">Small (15%)</option><option value="medium">Medium (18%)</option><option value="large">Large (20%)</option></select></label>
-              <label className="field"><span>Facecam position</span><select name="facecam_position" defaultValue="top_left"><option value="top_left">Upper left</option><option value="top_right">Upper right</option><option value="mid_left">Middle left</option><option value="mid_right">Middle right</option></select></label>
               <div className="field"><span>Game logo</span><select name="game_logo" defaultValue="gta6"><option value="gta6">GTA 6</option><option value="none">Hidden</option></select><label className="logo-upload"><Upload size={18}/><span>Upload another logo</span><input name="logo_file" type="file" accept="image/png,image/webp,image/jpeg"/></label><small>PNG, WebP, or JPG up to 8 MB. An uploaded image replaces the selection above.</small></div>
-              <label className="field"><span>Gameplay crop</span><select name="gameplay_crop" defaultValue="auto"><option value="auto">Smart tracking</option><option value="left">Keep left</option><option value="center">Keep center</option><option value="right">Keep right</option><option value="fit">Preserve full frame</option></select></label>
+              <label className="field"><span>Gameplay crop</span><select name="gameplay_crop" defaultValue="center"><option value="center">Centred (wide)</option><option value="fit">Whole frame, no crop</option><option value="auto">Smart tracking</option><option value="left">Keep left</option><option value="right">Keep right</option></select></label>
               <div className="field wide"><span>Clip strategy</span>
                 <select name="clip_strategy" value={clipStrategy} onChange={e => setClipStrategy(e.target.value)}>
                   <option value="single">Use the length selected above</option>
