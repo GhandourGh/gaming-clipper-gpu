@@ -123,7 +123,7 @@ def finalize(raw: Path, out: Path):
                     "-of", "csv=p=0", str(raw)], timeout=120).stdout.strip()
     vdur = int(pk) / FPS if pk.isdigit() and int(pk) > 0 else media.probe(raw)["v_duration"]
     media.run(["ffmpeg", "-y", "-hide_banner", "-loglevel", "error", "-i", str(raw), "-map", "0:v:0", "-map", "0:a:0",
-               "-af", f"loudnorm=I=-14:TP=-1.5:LRA=11,aresample=48000,atrim=0:{vdur:.3f}", "-t", f"{vdur:.3f}",
+               "-af", f"loudnorm=I=-14:TP=-1.5:LRA=11,aformat=sample_rates=48000:channel_layouts=stereo,atrim=0:{vdur:.3f}", "-t", f"{vdur:.3f}",
                "-c:v", "copy", "-c:a", "aac", "-b:a", "192k", "-movflags", "+faststart", str(out)], timeout=600)
 
 

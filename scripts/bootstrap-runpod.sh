@@ -22,6 +22,7 @@ export PYTHONPATH="$ROOT/worker"
 export WHISPER_MODEL="${WHISPER_MODEL:-large-v3-turbo}"
 export STORY_WHISPER_MODEL="${STORY_WHISPER_MODEL:-base}"
 export RENDER_CONCURRENCY="${RENDER_CONCURRENCY:-2}"
+export FFMPEG_FULL="${FFMPEG_FULL:-/usr/bin/ffmpeg}"
 
 if ! command -v ffmpeg >/dev/null || ! command -v psql >/dev/null || ! ldconfig -p 2>/dev/null | grep -q 'libnspr4.so'; then
   apt-get update
