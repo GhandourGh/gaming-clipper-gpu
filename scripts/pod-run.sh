@@ -126,7 +126,9 @@ if [[ "$(cat "$STAMP" 2>/dev/null)" != "$REQS" ]]; then
 fi
 "$VENV/bin/python" -c "import torch" 2>/dev/null || { log "pip install torch"; "$VENV/bin/pip" install -q torch torchaudio || log "WARN: torch install failed"; }
 "$VENV/bin/pip" install -q -U "yt-dlp[default]" >/dev/null 2>&1 &  # sites change often; keep yt-dlp fresh
-NV_LIBS="$("$VENV/bin/python" -c 'import os,nvidia.cublas.lib as a,nvidia.cudnn.lib as b;print(os.path.dirname(a.__file__)+":"+os.path.dirname(b.__file__))' 2>/dev/null)"
+# CUDA 12 cuBLAS/cuDNN for faster-whisper (CTranslate2) come from pip wheels; nvidia/* are namespace packages (no __file__)
+NV_LIBS="$(find "$VENV" -type d \( -path '*/nvidia/cublas/lib' -o -path '*/nvidia/cudnn/lib' -o -path '*/nvidia/cuda_runtime/lib' \) 2>/dev/null | paste -sd: -)"
+log "CUDA libs for Whisper: ${NV_LIBS:-none found}"
 export LD_LIBRARY_PATH="${NV_LIBS}${LD_LIBRARY_PATH:+:$LD_LIBRARY_PATH}"
 
 # ---------- Node + dashboard build (on the volume; rebuilt only when the code changes) ----------
