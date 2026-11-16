@@ -23,9 +23,13 @@ export WHISPER_MODEL="${WHISPER_MODEL:-large-v3-turbo}"
 export STORY_WHISPER_MODEL="${STORY_WHISPER_MODEL:-base}"
 export RENDER_CONCURRENCY="${RENDER_CONCURRENCY:-2}"
 
-if ! command -v ffmpeg >/dev/null || ! command -v psql >/dev/null; then
+if ! command -v ffmpeg >/dev/null || ! command -v psql >/dev/null || ! ldconfig -p 2>/dev/null | grep -q 'libnspr4.so'; then
   apt-get update
-  apt-get install -y --no-install-recommends ffmpeg postgresql postgresql-client ca-certificates curl
+  apt-get install -y --no-install-recommends \
+    ffmpeg postgresql postgresql-client ca-certificates curl \
+    libnspr4 libnss3 libatk1.0-0 libatk-bridge2.0-0 libcups2 libdrm2 libdbus-1-3 \
+    libxkbcommon0 libxcomposite1 libxdamage1 libxfixes3 libxrandr2 libgbm1 \
+    libasound2 libpango-1.0-0 libcairo2
   rm -rf /var/lib/apt/lists/*
 fi
 
