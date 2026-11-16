@@ -205,6 +205,11 @@ def build_ass(p: dict, caption_y: float) -> str:
     th = dict(THEMES.get(p.get("style") or "viral", THEMES["viral"]))
     if p["layout"].get("captionBar") and p["layout"]["mode"] == "split":
         th["size"] = round(th["size"] * 0.8)  # one line that fits inside the caption strip
+    cap_size = th["size"] * ((p.get("captionScale") or 1) if p.get("captionOneLine") else 1)  # only the GTA VI presets scale/fit their captions
+    if p.get("captionOneLine") and (p.get("captions") or {}).get("words"):  # one line per caption: the biggest font all of them fit in
+        from . import layouts
+        cap_size = layouts.caption_size([" ".join(x["w"] for x in g) for g in group_words(p["captions"]["words"])], cap_size)
+    th["size"] = cap_size
     accent, hot = _ass_color(p.get("captionAccent") or NEON), _ass_color(RED)
     only_active = bool(p.get("captionOnlyActive"))  # GTA VI presets: only the word being spoken is coloured, the rest solid white
     white = "&H00FFFFFF"
@@ -277,7 +282,7 @@ def build_ass(p: dict, caption_y: float) -> str:
                 else f"\\move({x},{y + 140},{x},{y},0,250)")
         place = "" if o.get("animation") == "slide_up" else f"\\pos({x},{y})"
         ev.append(f"Dialogue: 3,{_ts(o['start'])},{_ts(o['end'])},Sticker,,0,0,0,,{{\\an{an}{place}\\frz3{anim}\\fad(0,170)}}{_esc(text)}")
-    return "\n".join(["[Script Info]", "ScriptType: v4.00+", f"PlayResX: {W}", f"PlayResY: {H}", "WrapStyle: 0",
+    return "\n".join(["[Script Info]", "ScriptType: v4.00+", f"PlayResX: {W}", f"PlayResY: {H}", f"WrapStyle: {2 if p.get('captionOneLine') else 0}",
                       "ScaledBorderAndShadow: yes", "", "[V4+ Styles]",
                       "Format: Name, Fontname, Fontsize, PrimaryColour, SecondaryColour, OutlineColour, BackColour, Bold, Italic, "
                       "Underline, StrikeOut, ScaleX, ScaleY, Spacing, Angle, BorderStyle, Outline, Shadow, Alignment, MarginL, MarginR, MarginV, Encoding",

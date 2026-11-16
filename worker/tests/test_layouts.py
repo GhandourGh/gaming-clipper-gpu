@@ -74,3 +74,24 @@ def test_both_layouts_render_to_1080x1920(tmp_path, kind):
     probe = subprocess.run(["ffprobe", "-v", "error", "-select_streams", "v", "-show_entries", "stream=width,height", "-of", "csv=p=0", str(out)],
                            capture_output=True, text=True).stdout.strip()
     assert probe == "1080,1920"
+
+
+def test_caption_font_is_small_enough_for_one_line():
+    groups = ["SPAT OFF ANYONE", "I", "WHAT DOG WHY"]
+    size = L.caption_size(groups, 120)  # a font too big for three words on one line gets shrunk to fit
+    font = __import__("PIL.ImageFont", fromlist=["x"]).truetype(str(L.FONT_BLACK), size)
+    assert all(font.getlength(g) * 1.12 <= 900 for g in groups) and 40 <= size < 120   # the widest group fits on one line
+    assert L.caption_size(["OK"], 74) == 74                                           # short captions keep the full size
+
+
+def test_no_hook_card_unless_the_owner_wrote_one():
+    with_card = L.geometry("hook", 1920, 1080, None, None, (804, 192))
+    without = L.geometry("hook", 1920, 1080, None, None, None)
+    assert "hook" in with_card and "hook" not in without
+    assert without["game"]["y"] < with_card["game"]["y"] + 150 and without["captionY"] > without["game"]["y"] + without["game"]["h"] + 100
+
+
+def test_caption_shift_moves_the_captions_only():
+    a = L.geometry("hook", 1920, 1080, None, None, None, 0)
+    b = L.geometry("hook", 1920, 1080, None, None, None, 60)
+    assert b["captionY"] == a["captionY"] + 60 and b["game"] == a["game"]

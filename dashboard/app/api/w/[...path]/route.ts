@@ -13,6 +13,8 @@ const ALLOW: Array<[string, RegExp]> = [
   ["DELETE", new RegExp(`^dashboard\\/posts\\/${ID}$`)],
   ["POST", new RegExp(`^dashboard\\/posts\\/${ID}\\/approve$`)],
   ["POST", new RegExp(`^jobs\\/${ID}\\/clips\\/\\d{1,2}\\/(review|regenerate)$`)],
+  ["GET", new RegExp(`^jobs\\/${ID}\\/clips\\/\\d{1,2}\\/text$`)],
+  ["POST", new RegExp(`^jobs\\/${ID}\\/clips\\/\\d{1,2}\\/text$`)],
   ["POST", new RegExp(`^jobs\\/${ID}\\/(cancel|retry)$`)],
   ["GET", /^dashboard\/gpu$/],
   ["POST", /^admin\/(stop-pod|update|env)$/],

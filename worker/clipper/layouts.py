@@ -82,7 +82,17 @@ def crop_focus(src_w: int, src_h: int, win_w: int, win_h: int, cam_box: dict | N
     return round(best[1] + wf / 2, 4), best[0][0]
 
 
-def geometry(kind: str, src_w: int, src_h: int, cam_box: dict | None, frame: str | None, hook_size: tuple[int, int] | None) -> dict:
+def caption_size(texts: list[str], base: float, max_w: int = 900) -> int:
+    """Biggest caption font (CSS px, at most `base`) at which every caption group fits on ONE line of max_w pixels."""
+    font = ImageFont.truetype(str(FONT_BLACK), 100)
+    widest = max((font.getlength(t.upper()) for t in texts), default=0.0)
+    if widest <= 0:
+        return round(base)
+    return max(40, min(round(base), int(100 * max_w / (widest * 1.12))))  # 12%: the outline and the spoken word's small pop
+
+
+def geometry(kind: str, src_w: int, src_h: int, cam_box: dict | None, frame: str | None, hook_size: tuple[int, int] | None,
+             caption_shift: int = 0) -> dict:
     """Where everything goes. kind: 'cam' or 'hook'. All numbers are canvas pixels (even)."""
     g: dict = {"kind": kind, "header": {"x": 0, "y": HEADER_Y, "w": W, "h": HEADER_H}}
     if kind == "cam":
@@ -101,7 +111,7 @@ def geometry(kind: str, src_w: int, src_h: int, cam_box: dict | None, frame: str
             cy = HEADER_Y + HEADER_H + 40
             g["cam"] = {"x": (W - cw) // 2, "y": cy, "w": cw, "h": ch, "radius": 36}
             bottom = cy + ch
-        g["captionY"] = bottom + 64
+        g["captionY"] = bottom + 64 + caption_shift
         top = bottom + 24
         h = min(880, (1700 - top)) // 2 * 2
         focus, overlap = crop_focus(src_w, src_h, W, h, cam_box)
@@ -114,13 +124,16 @@ def geometry(kind: str, src_w: int, src_h: int, cam_box: dict | None, frame: str
                 h, focus, overlap = hh, f2, o2
         g["game"] = {"x": 0, "y": top, "w": W, "h": h, "whole": False, "focusX": focus, "camVisible": round(overlap, 3)}
     else:
-        hw, hh = hook_size or (700, 150)
-        hook_y = HEADER_Y + HEADER_H + 40
-        g["hook"] = {"x": (W - hw) // 2, "y": hook_y, "w": hw, "h": hh}
         gh = round(W * src_h / src_w) // 2 * 2  # the whole 16:9 picture at full width
-        top = hook_y + hh + 56
+        if hook_size:  # the owner wrote a hook: a white card between the header and the picture
+            hw, hh = hook_size
+            hook_y = HEADER_Y + HEADER_H + 40
+            g["hook"] = {"x": (W - hw) // 2, "y": hook_y, "w": hw, "h": hh}
+            top = hook_y + hh + 56
+        else:  # no hook card: the picture sits a little lower under the header
+            top = HEADER_Y + HEADER_H + 150
         g["game"] = {"x": 0, "y": top, "w": W, "h": gh, "whole": True, "focusX": 0.5}
-        g["captionY"] = top + gh + 72
+        g["captionY"] = top + gh + 120 + caption_shift
     return g
 
 

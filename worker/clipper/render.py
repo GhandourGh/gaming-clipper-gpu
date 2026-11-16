@@ -172,7 +172,7 @@ def captions_mode(job_id, idx: int | None = None) -> str:
 def build_props(job_id, idx, edl: EDL, base_info: dict, tr: dict | None = None) -> dict:
     job_meta = (db.q1("select meta from jobs where id=%s", (job_id,)) or {}).get("meta") or {}
     from .gemini import clip_meta
-    job_meta = {**job_meta, **{k: v for k, v in clip_meta(job_id, idx).items() if k in ("template", "header_text", "hook_text", "frame")}}
+    job_meta = {**job_meta, **{k: v for k, v in clip_meta(job_id, idx).items() if k in ("template", "header_text", "hook_text", "frame", "caption_size", "caption_shift")}}
     gta = job_meta.get("template") == "gta6_gameplay"
     cap_mode = captions_mode(job_id, idx)
     if cap_mode == "off":
@@ -265,13 +265,13 @@ def build_props(job_id, idx, edl: EDL, base_info: dict, tr: dict | None = None) 
             kind = "hook"  # no webcam to frame: the widescreen layout
         frame = job_meta.get("frame") or "neon_palm"
         ov = config.job_dir(job_id) / f"render_{idx}" / "public" / "ov"
-        hook_text = (job_meta.get("hook_text") or getattr(edl.hook, "text", "") or "").strip()
+        hook_text = (job_meta.get("hook_text") or "").strip()  # only text the owner wrote: the AI's own hook was not what they wanted
         assets = layouts.build_assets(kind, ov, job_meta.get("header_text") or "", hook_text)
         if kind == "cam" and frame != "none" and layouts.FRAMES.get(frame) and layouts.FRAMES[frame].exists():
             shutil.copy2(layouts.FRAMES[frame], ov / f"frame_{frame}.png")
             assets["files"]["frame"] = ov / f"frame_{frame}.png"
         spec = layouts.geometry(kind, base_info["width"], base_info["height"], box if kind == "cam" else None,
-                                frame if kind == "cam" else None, assets["hook_size"])
+                                frame if kind == "cam" else None, assets["hook_size"], int(job_meta.get("caption_shift") or 0))
         spec["files"] = {k: f"ov/{v.name}" for k, v in assets["files"].items()}
     from .templates import gta_geometry
     geo = gta_geometry(job_meta.get("gameplay_crop"), lay.facecam_box.model_dump() if lay.facecam_box else None,
@@ -288,9 +288,10 @@ def build_props(job_id, idx, edl: EDL, base_info: dict, tr: dict | None = None) 
                        **({"gta": spec} if spec else {})},
             "zooms": zooms, "captions": {**edl.captions.model_dump(), "words": words if edl.captions.enabled else []},
             "overlays": overlays, "sfx": sfx, "transitions": trans, "hook": {**edl.hook.model_dump(), "enabled": not gta and not spec}, "music": _music_props(edl),
-            "captionScale": 0.9 if gta else 1, "captionOffsetY": 0,
+            "captionScale": ({"small": 0.65, "medium": 0.8, "large": 1.0}.get(job_meta.get("caption_size") or "medium", 0.8) if spec else (0.9 if gta else 1)),
+            "captionOffsetY": 0,
             "captionY": spec["captionY"] if spec else (geo["captionY"] if geo else None), "zoomScale": 1,
-            **({"captionAccent": layouts.PINK, "captionOnlyActive": True} if spec else {}),
+            **({"captionAccent": layouts.PINK, "captionOnlyActive": True, "captionOneLine": True} if spec else {}),
             "logos": ([{"file": f"logos/{logo_slug}.png", "x": 0.82, "y": 0.105, "w": 285, "opacity": 0.94}] if logo_on and not spec else [])}
 
 
@@ -350,7 +351,7 @@ def render(job_id, idx):
     h.update(Path(__file__).with_name("layouts.py").read_bytes())  # and the GTA VI layout code
     from .gemini import clip_meta
     h.update(json.dumps({k: v for k, v in clip_meta(job_id, idx).items() if k in (
-        "template", "header_text", "hook_text", "frame", "gameplay_crop", "facecam_size", "captions", "caption_look")}, sort_keys=True).encode())  # a new layout is a new render
+        "template", "header_text", "hook_text", "frame", "gameplay_crop", "facecam_size", "captions", "caption_look", "caption_size", "caption_shift")}, sort_keys=True).encode())  # a new layout is a new render
     key = h.hexdigest()[:12]
     stamp = rd / "edl.key"
     seg_key = hashlib.sha256(json.dumps(clip["edl"]["segments"], sort_keys=True).encode()).hexdigest()[:12]

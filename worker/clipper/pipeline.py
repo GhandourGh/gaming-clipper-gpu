@@ -169,6 +169,15 @@ def direct(job_id, idx):
 @stage("review")
 def review(job_id, idx):
     """Optional moderation, then the AI review; one bounded redo goes back to `direct`."""
+    clip = db.q1("select candidate from clips where job_id=%s and idx=%s", (job_id, idx))
+    cand = dict((clip or {}).get("candidate") or {})
+    if (cand.get("opts") or {}).get("no_review"):  # a text edit (edits.py): only what the owner typed changed, nothing to judge or redo
+        o = dict(cand["opts"])
+        o.pop("no_review")
+        cand["opts"] = o
+        db.q("update clips set candidate=%s where job_id=%s and idx=%s", (db.J(cand), job_id, idx))
+        enqueue(job_id, "finish", force=True)
+        return {"skipped": "text edit"}
     out = {}
     mreq = gemini.moderation_request(job_id, idx)
     if mreq.get("body") and not mreq.get("skip"):

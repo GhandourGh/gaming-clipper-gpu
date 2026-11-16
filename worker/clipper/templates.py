@@ -70,9 +70,8 @@ def prompt_rule(name: str | None) -> str:
                 "zooms, sound effects, transitions and music are disabled; do not plan them.\n")
     if t["mode"] == "gta_hook":
         return ("\n## Layout fixed by the owner: GTA VI WIDESCREEN + HOOK CARD\nThe layout is fixed in code: header on top, a white hook card, the whole "
-                "widescreen gameplay at full width, captions under it. Keep captions enabled. Write `hook.text` as ONE punchy line of at most 8 words "
-                "about this exact moment (it is shown in the card), optionally ending with a single emoji. Overlays, zooms, sound effects, "
-                "transitions and music are disabled; do not plan them.\n")
+                "widescreen gameplay at full width, captions under it. Keep captions enabled. The hook card is written by the owner, not by you: `hook.text` is "
+                "not shown, so keep it short and plain. Overlays, zooms, sound effects, transitions and music are disabled; do not plan them.\n")
     return (f"\n## Layout fixed by the owner: SPLIT, webcam {round(t['share'] * 100)}% of the height on top\nlayout.mode must be "
             f"\"split\" with facecam_share {t['share']} and facecam_box = the webcam rectangle in the source frame.\n")
 

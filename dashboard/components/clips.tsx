@@ -4,6 +4,7 @@ import Link from "next/link";
 import { useEffect, useRef, useState } from "react";
 import { api, label, media, statusTone } from "@/lib/api";
 import { Check, Download, Play, Refresh, Send, X } from "./icons";
+import { ClipTextEditor } from "./clip-text-editor";
 
 export type ClipRow = {
   job_id: string; idx: number; job_title?: string; title: string; description?: string; hook?: string;
@@ -131,6 +132,7 @@ export function PlayerModal({ clip, onClose, onChange }: { clip: ClipRow | null;
               <button className="btn" disabled={!!busy} onClick={() => run("regen", () => api(`jobs/${clip.job_id}/clips/${clip.idx}/regenerate?style=${style}`, { method: "POST" }), "Regenerating: the new version appears on the job page in a few minutes")}><Refresh size={16}/>Go</button>
             </div>
           </div>
+          {clip.status !== "rendering" && <ClipTextEditor key={`${clip.job_id}-${clip.idx}-${clip.file || ""}`} jobId={clip.job_id} idx={clip.idx} onChange={onChange}/>}
           {note && <p className="notice info" style={{ margin: 0 }}>{note}</p>}
         </div>
       </div>
