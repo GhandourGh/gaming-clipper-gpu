@@ -84,11 +84,16 @@ def test_caption_font_is_small_enough_for_one_line():
     assert L.caption_size(["OK"], 74) == 74                                           # short captions keep the full size
 
 
-def test_no_hook_card_unless_the_owner_wrote_one():
+def test_picture_is_centred_and_a_hook_card_fits_above_it_without_moving_it():
     with_card = L.geometry("hook", 1920, 1080, None, None, (804, 192))
     without = L.geometry("hook", 1920, 1080, None, None, None)
     assert "hook" in with_card and "hook" not in without
-    assert without["game"]["y"] < with_card["game"]["y"] + 150 and without["captionY"] > without["game"]["y"] + without["game"]["h"] + 100
+    g = without["game"]
+    assert abs((g["y"] * 2 + g["h"]) - L.H) <= 4                                   # vertically centred on the 1920 px screen
+    assert with_card["game"]["y"] == g["y"]                                         # adding a hook does not move the stream
+    hk = with_card["hook"]
+    assert L.HEADER_Y + L.HEADER_H < hk["y"] and hk["y"] + hk["h"] < g["y"]        # the card sits between the header and the picture
+    assert without["captionY"] > g["y"] + g["h"] + 100
 
 
 def test_caption_shift_moves_the_captions_only():

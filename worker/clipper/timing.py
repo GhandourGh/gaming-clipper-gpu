@@ -136,6 +136,18 @@ def ends_mid_sentence(seg_end: float, words: list[dict]) -> bool:
     return not SENT_END.search(before[-1]["w"]) and after[0]["s"] - before[-1]["e"] < 0.25
 
 
+def pause_end(words: list[dict], seg_start: float, seg_end: float, ahead: float = 8.0, min_gap: float = 0.25) -> dict | None:
+    """The word to end a clip on when the speech has no sentence punctuation (nonstop talking): the nearest natural pause,
+    i.e. a gap of at least `min_gap` s between two words, within `ahead` seconds after seg_end; else the last such pause inside
+    the segment. Returns the word before the pause, or None when the speech never stops."""
+    gaps = [a for a, b in zip(words, words[1:]) if b["s"] - a["e"] >= min_gap]
+    after = [a for a in gaps if seg_end - 0.02 <= a["e"] <= seg_end + ahead]
+    if after:
+        return min(after, key=lambda a: a["e"])
+    before = [a for a in gaps if seg_start + 2.0 < a["s"] and a["e"] <= seg_end]
+    return max(before, key=lambda a: a["e"]) if before else None
+
+
 def extend_tail(segments: list[dict], words: list[dict], limit: float, tail: float = 0.6) -> list[dict]:
     """Let the payoff land: the last main segment keeps up to `tail` seconds after its final line (the laugh, the
     reaction, the silence) as long as nobody starts talking in that stretch and it stays inside the source window.

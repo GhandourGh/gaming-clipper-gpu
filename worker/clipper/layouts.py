@@ -128,13 +128,13 @@ def geometry(kind: str, src_w: int, src_h: int, cam_box: dict | None, frame: str
         natural = round(W * src_h / src_w) // 2 * 2  # the whole picture at full width: 608 px for a 16:9 stream
         gh = min(natural, MAX_GAME_H)  # a phone video would be far taller than the screen has room for: show a centred band of it
         whole = gh == natural
-        if hook_size:  # the owner wrote a hook: a white card between the header and the picture
+        # the picture sits in the middle of the screen, so there is room above it for a hook card (and below it for captions)
+        # and adding or removing a hook never moves the stream
+        top = (H - gh) // 4 * 2
+        if hook_size:
             hw, hh = hook_size
-            hook_y = HEADER_Y + HEADER_H + 40
-            g["hook"] = {"x": (W - hw) // 2, "y": hook_y, "w": hw, "h": hh}
-            top = hook_y + hh + 56
-        else:  # no hook card: the picture sits a little lower under the header
-            top = HEADER_Y + HEADER_H + 150
+            top = max(top, HEADER_Y + HEADER_H + 20 + hh + 56)  # a very tall card pushes the picture down rather than overlapping the header
+            g["hook"] = {"x": (W - hw) // 2, "y": top - 56 - hh, "w": hw, "h": hh}
         g["game"] = {"x": 0, "y": top, "w": W, "h": gh, "whole": whole, "focusX": 0.5}
         g["captionY"] = top + gh + 120 + caption_shift
     return g

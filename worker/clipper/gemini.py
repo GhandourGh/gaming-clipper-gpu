@@ -617,6 +617,11 @@ def _snap(job_id, edl: EDL, c: dict) -> tuple[EDL, list[str], str | None]:
         elif prev:
             last_main["end"] = round(prev[-1]["e"] + _room(prev[-1]), 3)
             notes.append(f"ending moved back to {last_main['end']:.2f}s, the end of the previous sentence")
+        else:  # nonstop speech without sentence punctuation: end at the nearest natural pause instead
+            pw = timing.pause_end(tr["words"], last_main["start"], last_main["end"])
+            if pw:
+                last_main["end"] = round(pw["e"] + _room(pw), 3)
+                notes.append(f"ending moved to {last_main['end']:.2f}s, the nearest pause in nonstop speech")
         edl = edl.model_copy(update={"segments": [type(edl.segments[0]).model_validate(s) for s in snapped]})
     # nonstop speech has no pause to snap to: never leave a cut INSIDE a word, cut on the word's edge instead
     moved = False
