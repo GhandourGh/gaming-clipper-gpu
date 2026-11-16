@@ -123,6 +123,7 @@ fi
 
 # ---------- Python venv (on the volume; reinstalled only when the dependency list changes) ----------
 VENV="$STATE/venv"
+export PATH="$VENV/bin:$PATH"  # yt-dlp (and other venv tools) must be found by the worker by name
 [[ -x "$VENV/bin/python" ]] || python3 -m venv --system-site-packages "$VENV"
 REQS='fastapi>=0.115 uvicorn>=0.30 pydantic>=2.8 psycopg[binary,pool]>=3.2 python-dotenv>=1.0 python-multipart>=0.0.9
 numpy>=1.26 opencv-python-headless>=4.10,<5 httpx>=0.27 yt-dlp[default]>=2026.10.26 faster-whisper>=1.1 transformers>=4.46
