@@ -629,12 +629,21 @@ def _live_submit(stream: dict, filename: str, started_at: float) -> str:
     meta = dict(db.q1("select meta from jobs where id=%s", (jid,))["meta"] or {})
     meta["live"] = {"stream": stream["name"], "platform": stream["platform"], "channel": stream["channel"],
                     "started_at": started_at}
+    tpl = stream.get("template", "gta6_gameplay")
+    gta_vi = tpl in ("gta_cam", "gta_hook", "gta_mix")  # the GTA VI presets: karaoke captions, no zooms/sfx, their own header and frame
     meta.update({"mode": "viral", "content_type": "stream", "edit": "balanced", "silence": "medium",
-                 "zoom": "off" if stream.get("template", "gta6_gameplay") == "gta6_gameplay" else "medium",
-                 "sfx": "off" if stream.get("template", "gta6_gameplay") == "gta6_gameplay" else "medium",
-                 "caption_look": "clean", "gameplay_crop": stream.get("gameplay_crop", "auto"),
+                 "zoom": "off" if tpl == "gta6_gameplay" or gta_vi else "medium",
+                 "sfx": "off" if tpl == "gta6_gameplay" or gta_vi else "medium",
+                 "caption_look": "karaoke" if gta_vi else "clean", "gameplay_crop": stream.get("gameplay_crop", "auto"),
                  "facecam_size": stream.get("facecam_size", "medium"),
                  "facecam_position": stream.get("facecam_position", "top_left"), "game_logo": "gta6"})
+    if gta_vi:
+        meta["header_text"] = stream.get("header_text") or ""
+        meta["frame"] = stream.get("frame") or "neon_palm"
+        if stream.get("hook_text"):
+            meta["hook_text"] = stream["hook_text"]
+        if tpl == "gta_mix":
+            meta["mix_layouts"] = stream.get("mix_layouts") or ["gta_cam", "gta_hook"]
     db.set_job(jid, meta=meta)
     return jid
 
@@ -652,6 +661,10 @@ class LiveStreamIn(BaseModel):
     gameplay_crop: str = Field("auto", pattern="^(auto|left|center|right|fit)$")
     facecam_size: str = Field("medium", pattern="^(small|medium|large)$")
     facecam_position: str = Field("top_left", pattern="^(top_left|top_right|mid_left|mid_right)$")
+    header_text: str = Field("", max_length=40, description="GTA VI presets: the streamer name in the header (\"SPEED ×\")")
+    hook_text: str = Field("", max_length=80, description="GTA VI widescreen preset: your own hook card text (empty = no card)")
+    frame: str = Field("neon_palm", pattern="^(neon_palm|none)$")
+    mix_layouts: list[str] | None = Field(None, max_length=4, description="AI mix: which GTA VI layouts it may use")
 
 
 class LiveStreamPatch(BaseModel):
@@ -681,7 +694,8 @@ def live_add(b: LiveStreamIn):
     try:
         s = live.add_stream(b.ref, b.rights_confirmed, b.topic, b.game, b.auto_clip, b.clips, b.style,
                             template=b.template, captions=b.captions, gameplay_crop=b.gameplay_crop,
-                            facecam_size=b.facecam_size, facecam_position=b.facecam_position)
+                            facecam_size=b.facecam_size, facecam_position=b.facecam_position, header_text=b.header_text,
+                            hook_text=b.hook_text, frame=b.frame, mix_layouts=b.mix_layouts)
     except ValueError as e:
         raise HTTPException(400, str(e)) from e
     return {k: v for k, v in s.items() if k != "rights_confirmed"}
