@@ -175,17 +175,37 @@ def header_png(text: str, out: Path) -> Path:
     return out
 
 
-def hook_card_png(text: str, out: Path, max_w: int = 840) -> tuple[Path, tuple[int, int]]:
-    """White rounded card, bold black uppercase text on one or two lines, an optional trailing emoji."""
-    emoji = (EMOJI_RE.findall(text or "") or [""])[-1].replace("️", "")
+def _balanced_lines(words: list[str], width_of, avail: float) -> list[str] | None:
+    """One line if it fits, else the two-line split with the shortest longer line (balanced, no single-word last line)."""
+    if width_of(" ".join(words)) <= avail:
+        return [" ".join(words)]
+    best = None
+    for i in range(1, len(words)):
+        a, b = " ".join(words[:i]), " ".join(words[i:])
+        m = max(width_of(a), width_of(b))
+        if m <= avail and (best is None or m < best[0]):
+            best = (m, [a, b])
+    return best[1] if best else None
+
+
+def hook_card_png(text: str, out: Path, max_w: int = 920) -> tuple[Path, tuple[int, int]]:
+    """White rounded card, bold black uppercase text on one or two balanced lines, an optional trailing emoji."""
+    emoji = (EMOJI_RE.findall(text or "") or [""])[-1].replace("\ufe0f", "")
     body = EMOJI_RE.sub("", text or "").strip().upper()
+    words = body.split() or [""]
     pad_x, pad_y = 46, 30
     probe = ImageDraw.Draw(Image.new("RGBA", (10, 10)))
-    for size in range(68, 40, -4):
+    lines, size, font, emoji_w = [body], 36, None, 0
+    for size in range(66, 34, -2):  # the biggest text that fits on at most two balanced lines
         font = ImageFont.truetype(str(FONT_BLACK), size)
         emoji_w = round(size * 1.05) + 14 if emoji else 0
-        lines, cur = [], ""
-        for word in body.split():
+        got = _balanced_lines(words, lambda t: probe.textlength(t, font=font), max_w - 2 * pad_x - emoji_w)
+        if got:
+            lines = got
+            break
+    else:  # very long hook: the smallest size, as many lines as it takes
+        cur, lines = "", []
+        for word in words:
             trial = f"{cur} {word}".strip()
             if probe.textlength(trial, font=font) <= max_w - 2 * pad_x - emoji_w:
                 cur = trial
@@ -194,10 +214,8 @@ def hook_card_png(text: str, out: Path, max_w: int = 840) -> tuple[Path, tuple[i
                 cur = word
         lines.append(cur)
         lines = [ln for ln in lines if ln]
-        if len(lines) <= 2:
-            break
     line_h = round(size * 1.18)
-    text_w = max(probe.textlength(ln, font=font) for ln in lines) if lines else 0
+    text_w = max(probe.textlength(ln, font=font) for ln in lines)
     w = round(text_w + 2 * pad_x + emoji_w)
     h = len(lines) * line_h + 2 * pad_y
     img = Image.new("RGBA", (w, h), (0, 0, 0, 0))

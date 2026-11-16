@@ -45,9 +45,9 @@ def test_stills_draw(tmp_path):
     h = L.header_png("SPEED ×", tmp_path / "h.png")
     assert Image.open(h).size == (1080, L.HEADER_H)
     p, (w, hh) = L.hook_card_png("Speed finally got his hands on GTA 6 😭", tmp_path / "k.png")
-    assert w <= 840 and 100 < hh < 260 and Image.open(p).size == (w, hh)
+    assert w <= 920 and 100 < hh < 260 and Image.open(p).size == (w, hh)
     long, (w2, _) = L.hook_card_png("A very long hook that goes on and on about something quite unusual happening here", tmp_path / "k2.png")
-    assert w2 <= 840                                                          # long text shrinks/wraps, never overflows the card width
+    assert w2 <= 920                                                          # long text shrinks/wraps, never overflows the card width
 
 
 @pytest.mark.skipif(not shutil.which(fastrender.FFMPEG) and not __import__("os").path.exists(fastrender.FFMPEG), reason="ffmpeg-full not installed")
