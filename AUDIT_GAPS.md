@@ -99,3 +99,25 @@ owner's OK). No GPU timings or NVENC evidence exist yet.
 
 **Not done by design:** the Gemini key could not be moved out of n8n automatically (reading decrypted credentials was
 refused); the owner enters it on the dashboard's GPU page. Mac services keep running until the Pod is verified.
+
+## 6. GPU run results (2026-11-16, Pod `q30ke15wn5ir9s`, RTX 2000 Ada, driver 595, $0.25/hr)
+
+Old Pods (A4000/A5000, SE) could not start or migrate (no capacity). A fresh Pod was deployed from the console with the
+start command in RUNBOOK.md; it clones the repo and installs everything itself, then was claimed once via `/api/setup`.
+
+**Proven on the GPU (job `ca08e6b8`, 47 s 1080p reaction clip):** ingest 0.5 s · analysis (faster-whisper
+large-v3-turbo, **CUDA float16**) 5.4 s · AI ranking 13.1 s · edit planning 86 s · Pod **self-stop via runpodctl**
+worked. `/ready`: NVENC test encode OK (BtbN ffmpeg 8.1, libass), Postgres, Gemini key, disk, Whisper on CUDA.
+
+**Not yet proven:** an NVENC clip render + QC end to end. The only clip ended `plan_failed`: Gemini's edit plan was
+rejected 3 times by the EDL validator (reasons not captured before the Pod stopped). Next session: start the Pod
+(it boots by itself in ~1–2 min now), check the job's events for the EDL errors, fix, re-run.
+
+**Fixed during deployment** (all pushed): BtbN asset names; ffmpeg libass check for 2-char filter flags; tar/chown on
+volumes that refuse chown; Postgres on container disk with 5-min dumps to the volume (+ before auto-stop) and restore
+on boot; psql over the socket; PyAV `metadata_errors` (Whisper now gets a numpy array); CUDA 12 cuBLAS/cuDNN path for
+CTranslate2; overlapping pod-run (PID lock dir; never delete a live postmaster.pid); dashboard rebuilt only when its
+code changes; root cause now reports `plan_failed` instead of "no clip passed QC".
+
+**Known oddities:** BtbN ffmpeg sometimes fails the NVENC self-test right at container start (the Ubuntu ffmpeg is then
+used, also NVENC); `/ready` shows the git rev on disk, not the running process.

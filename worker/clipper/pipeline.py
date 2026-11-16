@@ -192,7 +192,7 @@ def finish_job(job_id: str) -> dict:
         status = "done" if ok else ("no_highlights" if not clips else "failed")
     meta = dict(j["meta"] or {})
     meta["finished_at"] = time.time()
-    err = None if ok else (j["error"] or _first_error(job_id) or "no clip passed QC")
+    err = None if ok else (_first_error(job_id) or j["error"] or "no clip passed QC")
     db.set_job(job_id, status=status, meta=meta, error=err)
     for p in config.job_dir(str(job_id)).glob("analysis/cand_*.mp4"):  # bulky intermediates; the source stays
         p.unlink(missing_ok=True)
@@ -202,8 +202,12 @@ def finish_job(job_id: str) -> dict:
 def _first_error(job_id) -> str | None:
     """The root cause of a failed job: the first failed stage, so a render failure is not reported as a QC failure."""
     r = db.q1("select name, clip_idx, error from stages where job_id=%s and status='failed' order by finished_at nulls last limit 1", (job_id,))
-    if not r:
-        return None
+    if not r:  # no failed stage: a clip may still have failed inside a finished stage (e.g. its edit plan was rejected)
+        c = db.q1("select idx, fail_kind from clips where job_id=%s and fail_kind is not null order by idx limit 1", (job_id,))
+        if not c:
+            return None
+        why = {"plan_failed": "the AI's edit plan was rejected 3 times by the validator"}.get(c["fail_kind"], c["fail_kind"])
+        return f"{c['fail_kind']} (clip {c['idx']}): {why}"
     kind = {"render": "render_failed", "qc": "qc_failed", "direct": "plan_failed", "ingest": "ingest_failed",
             "analyze": "analysis_failed", "plan": "ai_unavailable", "review": "review_failed"}.get(r["name"], f"{r['name']}_failed")
     where = f" (clip {r['clip_idx']})" if r["clip_idx"] >= 0 else ""
