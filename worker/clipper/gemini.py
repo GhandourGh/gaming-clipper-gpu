@@ -681,8 +681,11 @@ def save_edl(job_id, idx: int, resp: dict) -> dict:
     c = clip["candidate"]
     from .preguide import story_ranges
     rs = story_ranges(job_id, c)
-    if rs:  # story parts lengthened by the pre-edit guide: the clip window grows with them
-        c = {**c, "start": min(c["start"], min(r[0] for r in rs)), "end": max(c["end"], max(r[1] for r in rs))}
+    if rs:  # story parts lengthened by the pre-edit guide: the clip window grows with them, plus snap slack so a cut
+        # at a range edge that falls inside a word can still move to the nearest word gap
+        from .edl import SNAP_SLACK
+        c = {**c, "start": max(0.0, min(c["start"], min(r[0] for r in rs)) - SNAP_SLACK),
+             "end": max(c["end"], max(r[1] for r in rs)) + SNAP_SLACK}
     last = _analysis(job_id) / f"edl_{idx}_last_error.json"
     raw, errors, warnings, edl = "", [], [], None
     try:
