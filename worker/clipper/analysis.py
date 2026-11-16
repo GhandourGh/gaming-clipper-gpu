@@ -61,6 +61,7 @@ def vocabulary(job: dict, src: Path) -> str:
 
 
 _FASTER_MODELS = {}
+WHISPER_DEVICE = {}  # model -> "cuda float16" or "cpu int8 (CUDA failed: ...)"; shown on /ready
 
 
 def _faster_model(name: str):
@@ -71,8 +72,11 @@ def _faster_model(name: str):
     if short not in _FASTER_MODELS:
         try:
             _FASTER_MODELS[short] = WhisperModel(short, device="cuda", compute_type="float16")
-        except Exception:
-            # A CPU fallback keeps diagnostics and non-GPU development usable.
+            WHISPER_DEVICE[short] = "cuda float16"
+        except Exception as e:  # noqa: BLE001
+            # CPU keeps non-GPU development usable, but it is never silent: /ready and the job log show it.
+            WHISPER_DEVICE[short] = f"cpu int8 (CUDA failed: {str(e)[:160]})"
+            db.event(None, "warn", "whisper", f"Whisper {short} running on CPU: {str(e)[:300]}", {})
             _FASTER_MODELS[short] = WhisperModel(short, device="cpu", compute_type="int8")
     return _FASTER_MODELS[short]
 
@@ -355,8 +359,8 @@ def make_proxy(src: Path, dst: Path, s: float, e: float):
     if dst.exists():
         return
     tmp = dst.with_suffix(".tmp.mp4")
-    media.run(["ffmpeg", "-y", "-hide_banner", "-loglevel", "error", "-ss", f"{s}", "-t", f"{e - s}", "-i", str(src),
-               "-vf", "scale=-2:360,fps=8", "-c:v", "libx264", "-preset", "veryfast", "-crf", "33",
+    media.run(["ffmpeg", "-y", "-hide_banner", "-loglevel", "error", *media.hwdec(), "-ss", f"{s}", "-t", f"{e - s}", "-i", str(src),
+               "-vf", "scale=-2:360,fps=8", *media.h264("proxy"),
                "-ac", "1", "-ar", "16000", "-b:a", "32k", "-movflags", "+faststart", str(tmp)], timeout=600)
     tmp.rename(dst)
 
@@ -369,13 +373,13 @@ def make_story_proxy(src: Path, dst: Path, beats: list[dict]):
     parts, inputs = [], []
     for i, b in enumerate(beats):
         dur = max(0.4, float(b["end"]) - float(b["start"]))
-        inputs += ["-ss", f"{float(b['start']):.3f}", "-t", f"{dur:.3f}", "-i", str(src)]
+        inputs += [*media.hwdec(), "-ss", f"{float(b['start']):.3f}", "-t", f"{dur:.3f}", "-i", str(src)]
         parts.append(f"[{i}:v]setpts=PTS-STARTPTS,scale=-2:360,fps=8[v{i}];"
                      f"[{i}:a]asetpts=PTS-STARTPTS[a{i}];")
     links = "".join(f"[v{i}][a{i}]" for i in range(len(beats)))
     graph = "".join(parts) + links + f"concat=n={len(beats)}:v=1:a=1[v][a]"
     media.run(["ffmpeg", "-y", "-hide_banner", "-loglevel", "error", *inputs, "-filter_complex", graph,
-               "-map", "[v]", "-map", "[a]", "-c:v", "libx264", "-preset", "veryfast", "-crf", "33",
+               "-map", "[v]", "-map", "[a]", *media.h264("proxy"),
                "-ac", "1", "-ar", "16000", "-b:a", "32k", "-movflags", "+faststart", str(tmp)], timeout=1800)
     tmp.rename(dst)
 

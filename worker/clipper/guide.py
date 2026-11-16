@@ -283,7 +283,8 @@ def _csv(g: dict) -> str:
 
 
 def _encode_args():
-    return ["-c:v", "h264_videotoolbox", "-b:v", "14M", "-pix_fmt", "yuv420p", "-c:a", "aac", "-b:a", "192k", "-movflags", "+faststart"]
+    from . import media
+    return [*media.h264("master"), "-c:a", "aac", "-b:a", "192k", "-movflags", "+faststart"]
 
 
 @app.post("/tools/guide/{job_id}/clips/{idx}/export", dependencies=A)

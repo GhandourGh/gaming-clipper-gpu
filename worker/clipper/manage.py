@@ -1,6 +1,7 @@
 """Owner dashboard API: overview, clip library, settings, costs, health, publishing drafts, accounts.
 All routes need the worker token (the Next.js dashboard calls them server-side). Nothing here publishes."""
 import json
+import os
 import shutil
 import uuid
 from datetime import datetime, timedelta, timezone
@@ -97,7 +98,8 @@ def integrations() -> dict:
     """Which optional services have a key in .env (True/False only; values are never returned)."""
     from . import fallback, music, publish, trends
     return {**{f"music_{k}": v for k, v in music.keys().items()}, **{f"llm_{k}": v for k, v in fallback.keys().items()},
-            **{f"trends_{k}": v for k, v in trends.keys().items()}, "publish_ayrshare": publish.Ayrshare().configured()}
+            **{f"trends_{k}": v for k, v in trends.keys().items()}, "publish_ayrshare": publish.Ayrshare().configured(),
+            "gemini": bool(os.environ.get("GEMINI_API_KEY")), "telegram": bool(os.environ.get("TELEGRAM_BOT_TOKEN") and os.environ.get("TELEGRAM_CHAT_ID"))}
 
 
 @app.get("/dashboard/settings", dependencies=A)
@@ -129,14 +131,17 @@ def health() -> dict:
         out["database"] = {"ok": True, "detail": "Postgres reachable"}
     except Exception as e:  # noqa: BLE001
         out["database"] = {"ok": False, "detail": str(e)[:120]}
-    if config.N8N_HEALTH_URL == "external":
-        out["n8n"] = {"ok": True, "detail": "n8n orchestrator runs on dashboard host"}
+    from . import ops
+    g = ops.gpu()
+    cached = (ops._ready_cache.get("v") or {}).get("checks", {})
+    ff = cached.get("ffmpeg", {})
+    if g.get("present"):
+        enc = "NVENC verified" if ff.get("nvenc_test_encode") else "NVENC not verified yet" if not ff else "NVENC FAILED"
+        out["gpu"] = {"ok": bool(ff.get("nvenc_test_encode", True)), "detail": f"{g['name']} · {(g['util_pct'] or 0):.0f}% busy · {enc}",
+                      "name": g["name"], "util_pct": g["util_pct"]}
     else:
-        try:
-            r = httpx.get(config.N8N_HEALTH_URL, timeout=2)
-            out["n8n"] = {"ok": r.status_code == 200, "detail": "n8n running" if r.status_code == 200 else f"HTTP {r.status_code}"}
-        except httpx.HTTPError:
-            out["n8n"] = {"ok": False, "detail": "n8n health check failed"}
+        out["gpu"] = {"ok": False, "detail": "no NVIDIA GPU on this host (rendering uses the CPU/Apple encoder)"}
+    out["pipeline"] = {"ok": True, "detail": "job engine runs inside the worker (no n8n needed)"}
     du = shutil.disk_usage(config.DATA)
     used = sum(f.stat().st_size for f in config.JOBS.rglob("*") if f.is_file()) if config.JOBS.exists() else 0
     out["disk"] = {"ok": du.free > 5e9, "detail": f"{du.free / 1e9:.0f} GB free", "free_gb": round(du.free / 1e9, 1), "jobs_gb": round(used / 1e9, 2)}

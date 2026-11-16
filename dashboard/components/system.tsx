@@ -105,7 +105,7 @@ export function SettingsPage() {
     catch (reason) { setErr(reason instanceof Error ? reason.message : "Could not save"); } finally { setBusy(false); }
   };
   const num = (v: string) => (v === "" ? null : Number(v));
-  const n8nOk = health.data?.health.n8n?.ok;
+  const geminiOk = data?.integrations.gemini;
 
   return <>
     <header className="page-head"><div><p className="eyebrow">Settings</p><h1>Set up your clipper</h1><p>Start with the short checklist. Change everyday defaults below; technical controls stay tucked away.</p></div></header>
@@ -113,14 +113,14 @@ export function SettingsPage() {
     {!s ? <div className="skeleton" style={{ height: 400 }}/> : <form className="form" onSubmit={save}>
       <section className="card card-pad setup-guide" aria-labelledby="setup-guide-title">
         <div className="setup-guide-head"><div><p className="eyebrow">Short guide</p><h2 id="setup-guide-title">What you actually need</h2><p>Normal YouTube and finished Twitch links need no extra source key.</p></div>
-          <span className={`badge ${n8nOk ? "ok" : "warn"}`}>{n8nOk ? "Core system ready" : "Check system below"}</span></div>
+          <span className={`badge ${geminiOk ? "ok" : "warn"}`}>{geminiOk ? "Core system ready" : "Gemini key missing"}</span></div>
         <ol className="setup-steps">
-          <li><span>1</span><div><b>Gemini AI — required</b><p>The AI key lives in the n8n credential named “Google Gemini API.” It finds moments and plans every edit.</p></div><em className={n8nOk ? "ready" : ""}>{n8nOk ? "Connected" : "Check n8n"}</em></li>
+          <li><span>1</span><div><b>Gemini AI — required</b><p>The worker calls Gemini directly with <code>GEMINI_API_KEY</code> from the GPU Pod's <code>/workspace/clipper.env</code>. It finds moments and plans every edit.</p></div><em className={geminiOk ? "ready" : ""}>{geminiOk ? "Connected" : "Key missing"}</em></li>
           <li><span>2</span><div><b>Add a video source</b><p>Paste a YouTube video or finished Twitch VOD on New job. For automatic live Twitch recording, add a Twitch app’s client ID and secret.</p></div><em>No key for VODs</em></li>
           <li><span>3</span><div><b>Optional extras</b><p>Only add these if you use the feature: backup AI, trend research, music, or publishing.</p>
             <div className="chips"><Key on={data?.integrations.llm_openrouter || data?.integrations.llm_groq} name="Backup AI"/><Key on={data?.integrations.trends_shortsintel || data?.integrations.trends_trendsmcp} name="Trends"/><Key on={data?.integrations.publish_ayrshare} name="Publishing"/></div></div><em>Optional</em></li>
         </ol>
-        <details className="key-help"><summary>How to add a key</summary><div><p>1. Create the key on the provider’s website. 2. Add it to the hosted app’s <code>.env</code> file using the exact name below. 3. Restart the worker. Keys are never displayed on this page.</p>
+        <details className="key-help"><summary>How to add a key</summary><div><p>1. Create the key on the provider’s website. 2. Add it to <code>/workspace/clipper.env</code> on the GPU Pod using the exact name below. 3. Restart the Pod (or use Update on the GPU page). Keys are never displayed on this page.</p>
           <p><code>OPENROUTER_API_KEY</code> or <code>GROQ_API_KEY</code> · <code>SHORTSINTEL_API_KEY</code> or <code>TRENDSMCP_API_KEY</code> · <code>TWITCH_CLIENT_ID</code> + <code>TWITCH_CLIENT_SECRET</code> · <code>AYRSHARE_API_KEY</code></p></div></details>
       </section>
       <section className="card card-pad form-card">
@@ -224,7 +224,7 @@ export function SettingsPage() {
           <label className="field"><span>Telegram messages</span><span style={{ display: "flex", alignItems: "center", gap: ".6rem", minHeight: 42 }}>
             <span className="switch"><input type="checkbox" checked={s.telegram_notify} onChange={e => set("telegram_notify", e.target.checked)} aria-label="Telegram messages"/><i/></span>
             <span className="muted" style={{ fontWeight: 400 }}>{s.telegram_notify ? "On" : "Off"}</span></span>
-            <small>Saved now; the n8n workflows start reading it in the next workflow update.</small></label>
+            <small>{data?.integrations.telegram ? "Sent by the worker when a job finishes." : "Needs TELEGRAM_BOT_TOKEN and TELEGRAM_CHAT_ID on the Pod."}</small></label>
         </div>
       </section>
       <div className="form-actions"><button className="btn btn-primary btn-lg" disabled={busy}><Check/>{busy ? "Saving…" : "Save settings"}</button></div>

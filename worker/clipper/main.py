@@ -1,5 +1,5 @@
-"""clipper-worker HTTP API. Binds to 127.0.0.1 only; every route except /health
-and /files requires the X-Clipper-Token header. n8n orchestrates through it."""
+"""clipper-worker HTTP API. Binds to 127.0.0.1 only; every route except /health and /files requires the
+X-Clipper-Token header. The worker owns the whole pipeline (queue.py + pipeline.py); nothing outside drives it."""
 import hashlib
 import html
 import json
@@ -15,7 +15,7 @@ from fastapi import Depends, FastAPI, File, Header, HTTPException, UploadFile, Q
 from fastapi.responses import FileResponse, HTMLResponse
 from pydantic import BaseModel, Field
 
-from . import analysis, assets, config, db, gemini, ingest, qc, queue, render  # noqa: F401 (registers stages)
+from . import analysis, assets, config, db, gemini, ingest, pipeline, qc, queue, render  # noqa: F401 (registers stages)
 
 app = FastAPI(title="clipper-worker", version="0.2.0", docs_url=None, redoc_url=None, openapi_url=None)
 
@@ -32,6 +32,9 @@ A = [Depends(auth)]
 def _startup():
     db.pool()
     queue.start()
+    pipeline.start()
+    from . import ops
+    ops.start()
     from . import live
     live.start(_live_submit)
 
@@ -39,7 +42,7 @@ def _startup():
 @app.get("/health")
 def health():
     db.q1("select 1 as ok")
-    return {"ok": True, "queue": queue._Q.qsize()}
+    return {"ok": True, "queue": queue.qsize()}
 
 
 class JobIn(BaseModel):
@@ -135,7 +138,7 @@ def _create_job(j: JobIn):
         if db.q1("select 1 from clips where job_id=%s", (jid,)):
             db.q("update clips set status='planned' where job_id=%s and status in ('failed','qc_failed') and edl is not null", (jid,))
             db.q("delete from stages where job_id=%s and clip_idx>=0 and status='failed'", (jid,))
-            status = "selected"  # n8n re-plans / re-renders clips; analysis + ranking are reused
+            status = "selected"  # the pipeline re-plans / re-renders clips; analysis + ranking are reused
         elif "analyze" in done:
             status = "analyzed"
         else:
@@ -155,6 +158,8 @@ def _create_job(j: JobIn):
             meta["length"] = _length(j)
         db.set_job(jid, status=status, error=None, meta=meta)
         db.event(jid, "info", "create", f"resubmitted; resuming at status {status}", {"style": meta.get("style")})
+        if status != "created":
+            pipeline.resume(jid)
         return {"job_id": jid, "status": status, "deduplicated": True}
     jid = str(uuid.uuid4())
     db.q("insert into jobs(id, idem_key, source_type, source_url, source_path, title, meta) values (%s,%s,%s,%s,%s,%s,%s)",
@@ -293,7 +298,8 @@ def _job(job_id):
 def job_status(job_id: uuid.UUID):
     j = _job(job_id)
     stages = db.q("select name, clip_idx, status, attempts, error, result, started_at, finished_at from stages where job_id=%s order by clip_idx, started_at nulls last", (job_id,))
-    clips = db.q("select idx, status, review, qc, output_path, candidate, edl, ai_review from clips where job_id=%s order by idx", (job_id,))
+    clips = db.q("select idx, status, review, qc, output_path, candidate, edl, ai_review, render_engine, encoder, render_seconds, "
+                 "render_note, fail_kind from clips where job_id=%s order by idx", (job_id,))
     cost = db.q1("select coalesce(sum(usd),0) as usd from costs where job_id=%s", (job_id,))["usd"]
     t0 = (j["meta"] or {}).get("t0")
     pending = [s for s in stages if s["status"] in ("queued", "running")]
@@ -308,13 +314,17 @@ def job_status(job_id: uuid.UUID):
                     "file": f"{config.PUBLIC_BASE}/files/{job_id}/{Path(c['output_path']).name}" if c["output_path"] else None,
                     "local_path": c["output_path"], "content_type": cand.get("content_type"),
                     "below_quality_bar": bool(cand.get("below_quality_bar")),
-                    "ai_review_score": (c["ai_review"] or {}).get("score"), "ai_review_verdict": (c["ai_review"] or {}).get("verdict")})
+                    "ai_review_score": (c["ai_review"] or {}).get("score"), "ai_review_verdict": (c["ai_review"] or {}).get("verdict"),
+                    "render_engine": c["render_engine"], "encoder": c["encoder"], "render_seconds": c["render_seconds"],
+                    "render_note": c["render_note"], "fail_kind": c["fail_kind"],
+                    "cpu_fallback": bool(c["render_note"] and c["render_note"].startswith("CPU fallback"))})
     return {"job_id": str(job_id), "status": j["status"], "error": j["error"], "title": j["title"],
             "source": (j["meta"] or {}).get("source"), "burned_captions": ((j["meta"] or {}).get("burned_captions") or {}).get("present"), "busy": bool(pending), "pending": [f"{s['name']}:{s['clip_idx']}" for s in pending],
             "failed": [{"stage": s["name"], "clip": s["clip_idx"], "error": s["error"]} for s in failed],
             "elapsed_s": round(time.time() - t0, 1) if t0 else None, "cost_usd": float(cost), "clips": out,
             "stages": [{"name": s["name"], "clip": s["clip_idx"], "status": s["status"], "attempts": s["attempts"],
-                        "seconds": (s["result"] or {}).get("seconds")} for s in stages],
+                        "seconds": (s["result"] or {}).get("seconds"), "error": s["error"]} for s in stages],
+            "root_cause": pipeline._first_error(str(job_id)) if failed else None,
             "view": f"{config.PUBLIC_BASE}/jobs/{job_id}/view"}
 
 
@@ -389,18 +399,8 @@ def moderation_result(job_id: uuid.UUID, idx: int, resp: dict):
 @app.post("/jobs/{job_id}/trends", dependencies=A)
 def job_trends(job_id: uuid.UUID):
     """Trend hints for the director (n8n step before editing). Skipped when off, no key, or no game recognised."""
-    j = _job(job_id)
-    from . import trends
-    from .manage import load_settings
-    s = load_settings()
-    meta = dict(j["meta"] or {})
-    info = config.job_dir(str(job_id)) / "source.info.json"
-    yt_title = json.loads(info.read_text()).get("title") if info.exists() else None
-    game = meta.get("game") or trends.game_of(j["title"], yt_title)
-    h = trends.hints(str(job_id), game, s.trends_provider) if s.trends_enabled else {"skipped": "trend hints are off in Settings"}
-    meta["trends"] = h
-    db.set_job(str(job_id), meta=meta)
-    return h
+    _job(job_id)
+    return pipeline.trend_hints(str(job_id))
 
 
 @app.get("/jobs/{job_id}/text-score-request", dependencies=A)
@@ -487,17 +487,41 @@ def review(job_id: uuid.UUID, idx: int, r: ReviewIn):
 
 @app.post("/jobs/{job_id}/finish", dependencies=A)
 def finish(job_id: uuid.UUID):
-    j = _job(job_id)
-    clips = db.q("select status from clips where job_id=%s", (job_id,))
-    ok = sum(c["status"] == "ready_for_review" for c in clips)
-    status = "done" if ok else ("no_highlights" if not clips else "failed")
-    meta = dict(j["meta"] or {})
-    meta["finished_at"] = time.time()
-    db.set_job(job_id, status=status, meta=meta, error=None if ok else j["error"] or "no clip passed QC")
-    # drop bulky intermediates now; source + analysis cache kept until retention for cheap re-renders
-    for p in config.job_dir(str(job_id)).glob("analysis/cand_*.mp4"):
-        p.unlink(missing_ok=True)
+    _job(job_id)
+    pipeline.finish_job(str(job_id))
     return job_status(job_id)
+
+
+@app.post("/jobs/{job_id}/cancel", dependencies=A)
+def cancel_job(job_id: uuid.UUID):
+    """Stop a job: queued stages are cancelled now; a stage already running finishes its current step and stops there."""
+    jid = str(job_id)
+    _job(jid)
+    n = db.q("update stages set status='cancelled', finished_at=now() where job_id=%s and status='queued' returning name", (jid,))
+    db.set_job(jid, status="cancelled", error="cancelled by the owner")
+    db.event(jid, "warn", "cancel", "job cancelled", {"stages": len(n)})
+    return {"job_id": jid, "status": "cancelled", "cancelled_stages": len(n)}
+
+
+@app.post("/jobs/{job_id}/retry", dependencies=A)
+def retry_job(job_id: uuid.UUID):
+    """Retry failed/cancelled work without redoing finished stages (analysis and ranking are reused)."""
+    jid = str(job_id)
+    j = _job(jid)
+    if _busy(jid):
+        raise HTTPException(409, "this job is still working")
+    db.q("delete from stages where job_id=%s and status in ('failed','cancelled')", (jid,))
+    db.q("update clips set status=case when edl is null then 'selected' else 'planned' end, fail_kind=null "
+         "where job_id=%s and status in ('failed','qc_failed')", (jid,))
+    done = {s["name"] for s in db.q("select name from stages where job_id=%s and clip_idx=-1 and status='done'", (jid,))}
+    status = ("selected" if db.q1("select 1 from clips where job_id=%s", (jid,)) else
+              "analyzed" if "analyze" in done else "ingested" if "ingest" in done else "created")
+    meta = dict(j["meta"] or {})
+    meta["t0"] = time.time()
+    db.set_job(jid, status=status, error=None, meta=meta)
+    what = pipeline.resume(jid)
+    db.event(jid, "info", "retry", f"retry requested; resuming at {status} ({what})", {})
+    return {"job_id": jid, "status": status, "queued": what}
 
 
 def _busy(job_id: str) -> bool:
@@ -546,7 +570,7 @@ def restart_job(job_id: uuid.UUID):
     j = _job(jid)
     if _busy(jid):
         raise HTTPException(409, "this job is still working")
-    inbox_name = None  # where the video came from, so the caller can re-trigger the n8n flow that drives the later stages
+    inbox_name = None  # where the video came from (shown to the caller)
     sp = Path(j["source_path"]) if j.get("source_path") else None
     if sp and sp.exists():
         try:
@@ -603,23 +627,6 @@ def _live_submit(stream: dict, filename: str, started_at: float) -> str:
                  "facecam_size": stream.get("facecam_size", "medium"),
                  "facecam_position": stream.get("facecam_position", "top_left"), "game_logo": "gta6"})
     db.set_job(jid, meta=meta)
-    # Live chunks are created directly by the recorder, so they bypass the
-    # normal n8n webhook that drives ranking, selection, directing and render.
-    # Re-enter that workflow with the same file; /jobs deduplicates the request
-    # and n8n then continues from the already-analyzed job.
-    def _kickoff():
-        try:
-            import httpx
-            payload = {"source_type": "file", "filename": filename,
-                       "rights_confirmed": True, "style": stream.get("style") or "viral",
-                       "clips": stream.get("clips"), "game": stream.get("game") or None,
-                       "engine": "stories", "captions": stream.get("captions", "off"),
-                       "template": stream.get("template", "gta6_gameplay")}
-            httpx.post("http://127.0.0.1:5678/webhook/gaming-clipper", json=payload,
-                       headers={"X-Clipper-Token": config.TOKEN}, timeout=20)
-        except Exception as e:  # n8n may be temporarily unavailable; recording must continue
-            db.event(jid, "warn", "live", f"could not start auto-clipping workflow: {str(e)[:200]}", {})
-    threading.Thread(target=_kickoff, daemon=True, name="live-n8n-kickoff").start()
     return jid
 
 
@@ -745,3 +752,4 @@ def ui_review(job_id: uuid.UUID, idx: int, decision: str, sig: str):
 from . import ui  # noqa: E402,F401  (dashboard routes)
 from . import manage  # noqa: E402,F401  (owner dashboard API)
 from . import guide  # noqa: E402,F401  (Tools page: edit guide)
+from . import ops  # noqa: E402,F401  (/ready, GPU telemetry, admin, idle auto-stop)

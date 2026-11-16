@@ -13,11 +13,12 @@ export type Clip = {
   candidate: Record<string, unknown>; edl?: Record<string, unknown>; assets?: Record<string, unknown>;
   qc?: { passed?: boolean; checks?: Record<string, { ok: boolean; detail?: unknown }> };
   output_path?: string; file?: string; file_bytes?: number; thumbnail?: string; versions?: Array<Record<string, unknown>>;
+  render_engine?: string | null; encoder?: string | null; render_seconds?: number | null; render_note?: string | null; fail_kind?: string | null;
 };
 
 export type JobDetail = {
   job: { id: string; title: string; status: string; error?: string; created_at: string; style: string; elapsed_s?: number; cost_usd: number; download_bytes?: number; source_available?: boolean;
-    burned_captions?: { present: boolean; where?: string; coverage?: number; examples?: string[] } | null };
+    burned_captions?: { present: boolean; where?: string; coverage?: number; examples?: string[] } | null; root_cause?: string | null };
   clips: Clip[]; stages: Stage[];
   costs: Array<{ model: string; calls: number; tokens: number; usd: number }>;
   rejected: Array<{ idx: number; quality: number; why_engaging: string; title: string }>;

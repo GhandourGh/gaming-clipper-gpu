@@ -799,8 +799,8 @@ def _final_proxy(src: Path, dst: Path):
     if dst.exists():
         return
     tmp = dst.with_suffix(".tmp.mp4")
-    media.run(["ffmpeg", "-y", "-hide_banner", "-loglevel", "error", "-i", str(src), "-vf", "scale=-2:854,fps=10",
-               "-c:v", "libx264", "-preset", "veryfast", "-crf", "30", "-ac", "1", "-ar", "16000", "-b:a", "48k",
+    media.run(["ffmpeg", "-y", "-hide_banner", "-loglevel", "error", *media.hwdec(), "-i", str(src), "-vf", "scale=-2:854,fps=10",
+               *media.h264("review"), "-ac", "1", "-ar", "16000", "-b:a", "48k",
                "-movflags", "+faststart", str(tmp)], timeout=600)
     tmp.rename(dst)
 

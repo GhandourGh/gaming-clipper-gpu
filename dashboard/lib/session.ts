@@ -1,6 +1,8 @@
-// Dashboard session check shared by proxy.ts and routes that bypass the proxy (large uploads).
+// Dashboard sign-in. The session cookie is an HMAC of the worker token, so it can only be minted by someone who knows
+// the access key (DASHBOARD_PASSWORD, or the worker token when no separate password is set). Shared by proxy.ts and the
+// routes that bypass the proxy (large uploads).
 export const cookieName = "clipper_dashboard_session";
-const context = "gaming-clipper-dashboard-v1";
+const context = "gaming-clipper-dashboard-v2";
 
 export async function sessionSignature() {
   const secret = process.env.CLIPPER_TOKEN || "";
@@ -8,6 +10,17 @@ export async function sessionSignature() {
   const key = await crypto.subtle.importKey("raw", new TextEncoder().encode(secret), { name: "HMAC", hash: "SHA-256" }, false, ["sign"]);
   const bytes = new Uint8Array(await crypto.subtle.sign("HMAC", key, new TextEncoder().encode(context)));
   return btoa(String.fromCharCode(...bytes)).replaceAll("+", "-").replaceAll("/", "_").replaceAll("=", "");
+}
+
+/** Constant-time check of the access key typed on the sign-in page. */
+export async function accessKeyOk(supplied: string) {
+  const expected = process.env.DASHBOARD_PASSWORD || process.env.CLIPPER_TOKEN || "";
+  if (!expected || !supplied) return false;
+  const h = async (s: string) => new Uint8Array(await crypto.subtle.digest("SHA-256", new TextEncoder().encode(s)));
+  const [a, b] = await Promise.all([h(supplied), h(expected)]);
+  let diff = 0;
+  for (let i = 0; i < a.length; i++) diff |= a[i] ^ b[i];
+  return diff === 0;
 }
 
 function cookie(request: Request, name: string) {
@@ -20,6 +33,6 @@ export async function validSession(request: Request) {
   const expected = await sessionSignature();
   if (!expected || cookie(request, cookieName) !== expected) return false;
   const origin = request.headers.get("origin");
-  const host = request.headers.get("host");
+  const host = request.headers.get("x-forwarded-host") || request.headers.get("host");
   return origin !== null && host !== null && new URL(origin).host === host;  // browsers send Origin on every POST
 }

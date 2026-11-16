@@ -83,6 +83,9 @@ def analyse(frames: list[list[dict]]) -> dict:
 
 def detect(src: Path, duration: float, samples: int = 40) -> dict:
     """Sample frames evenly (skipping intro/outro), OCR them and analyse. ~5-15 s on an M1."""
+    import platform
+    if platform.system() != "Darwin":  # the OCR uses Apple's Vision framework: skip instead of 40 wasted frame seeks
+        return {"present": False, "skipped": "burned-caption OCR needs macOS Vision; not available on the GPU worker"}
     with tempfile.TemporaryDirectory() as tmp:
         frames = []
         for i in range(samples):  # seek to each sample (decoding the whole video took ~10 min for 23 min of 1080p)

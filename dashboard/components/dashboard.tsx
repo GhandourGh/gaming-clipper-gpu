@@ -17,7 +17,7 @@ type Overview = {
 };
 const STEP_LABEL: Record<string, string> = { ingest: "Downloading", analyze: "Analysing", rank: "Finding moments", select: "Picking moments",
   director: "Planning the edit", assets: "Fetching assets", render: "Rendering", qc: "Quality check", review: "AI review" };
-const HEALTH_LABEL: Record<string, string> = { worker: "Worker", n8n: "n8n", database: "Database", disk: "Storage" };
+const HEALTH_LABEL: Record<string, string> = { worker: "Worker", gpu: "GPU", pipeline: "Job engine", database: "Database", disk: "Storage" };
 
 export function JobRows({ jobs, onDeleted }: { jobs: JobSummary[]; onDeleted?: () => void }) {
   return <div className="rows">{jobs.map(job => (

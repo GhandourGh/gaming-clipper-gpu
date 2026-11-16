@@ -29,6 +29,11 @@ create table if not exists clips (
 alter table if exists clips add column if not exists style text;
 alter table if exists clips add column if not exists versions jsonb not null default '[]';
 alter table if exists clips add column if not exists ai_review jsonb;
+alter table if exists clips add column if not exists render_engine text;
+alter table if exists clips add column if not exists encoder text;
+alter table if exists clips add column if not exists render_seconds real;
+alter table if exists clips add column if not exists render_note text;
+alter table if exists clips add column if not exists fail_kind text;
 create table if not exists costs (
   id bigserial primary key, job_id uuid not null references jobs(id) on delete cascade,
   item text not null, units jsonb, usd numeric(12,6) not null default 0, ts timestamptz not null default now());

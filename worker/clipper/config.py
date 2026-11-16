@@ -22,6 +22,9 @@ DB_DSN = os.environ.get(
     f"postgresql://clipper:{os.environ.get('CLIPPER_DB_PASSWORD', '')}@127.0.0.1:5435/clipper",
 )
 _MAC = platform.system() == "Darwin"
+# A failed fast (GPU) render may fall back to Remotion (CPU, Chrome, ~20x slower). On Linux GPU workers that is OFF by
+# default: the clip fails as render_failed with the real error instead of silently burning minutes on the CPU.
+RENDER_CPU_FALLBACK = os.environ.get("RENDER_CPU_FALLBACK", "0" if platform.system() == "Linux" else "1") == "1"
 WHISPER_MODEL = os.environ.get("WHISPER_MODEL", "mlx-community/whisper-large-v3-turbo" if _MAC else "large-v3-turbo")
 # Full multi-hour story indexing values coverage and speed; selected beats are re-transcribed with WHISPER_MODEL.
 STORY_WHISPER_MODEL = os.environ.get("STORY_WHISPER_MODEL", "mlx-community/whisper-base-mlx" if _MAC else "base")

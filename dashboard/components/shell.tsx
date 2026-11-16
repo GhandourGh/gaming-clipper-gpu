@@ -21,7 +21,7 @@ const PUBLISH = [
   { href: "/accounts", label: "Accounts", icon: LinkIcon },
 ];
 const SYSTEM = [
-  { href: "/gpu-test", label: "GPU test", icon: Sparkle },
+  { href: "/gpu", label: "GPU", icon: Sparkle },
   { href: "/costs", label: "Costs & usage", icon: Chart },
   { href: "/settings", label: "Settings", icon: Gear },
 ];
@@ -46,12 +46,14 @@ function NavLinks({ pathname, counts, onNavigate }: { pathname: string; counts: 
 export function Shell({ children }: { children: React.ReactNode }) {
   const pathname = usePathname();
   const [menu, setMenu] = useState(false);
-  const { data } = useData<Overview>("dashboard/overview", 15000);
+  const login = pathname === "/login";
+  const { data } = useData<Overview>(login ? null : "dashboard/overview", 15000);
   const counts = { review: data?.review.length ?? 0, live: data?.live.length ?? 0 };
   const health = data ? Object.values(data.health) : [];
   const healthy = health.length > 0 && health.every(h => h.ok);
   useEffect(() => setMenu(false), [pathname]);
 
+  if (login) return <main style={{ minHeight: "100vh", padding: "1rem" }}>{children}</main>;
   return <div className="app">
     <aside className="sidebar">
       <Link href="/" className="brand"><span className="brand-mark"><Mark size={18}/></span><span>Clipper<small>Gaming clip studio</small></span></Link>

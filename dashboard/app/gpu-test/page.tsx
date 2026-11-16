@@ -1,3 +1,3 @@
-import { GpuTest } from "@/components/gpu-test";
+import { redirect } from "next/navigation";
 
-export default function Page() { return <GpuTest />; }
+export default function Page() { redirect("/gpu"); }

@@ -30,7 +30,7 @@ export async function POST(request: Request) {
     if (!payload.rights_confirmed) return Response.json({ error: "Confirm that you have the rights to edit this video." }, { status: 400 });
     if (!url && !filename) return Response.json({ error: "Add a YouTube or Twitch VOD URL, upload a file, or choose an inbox file." }, { status: 400 });
     const g = (k: string) => String(form.get(k) || "");
-    const options = {  // mode + editing options: the worker attaches them to the job that n8n creates a moment later
+    const options = {  // mode + editing options: the worker attaches them to the job created right after
       mode: g("mode"), content_type: g("content_type"), edit: g("edit"), silence: g("silence"), zoom: g("zoom"), sfx: g("sfx"),
       caption_look: g("caption_look"), instructions: g("instructions") || null,
       clips: payload.clips, min_seconds: payload.min_seconds, max_seconds: payload.max_seconds,
@@ -41,13 +41,8 @@ export async function POST(request: Request) {
     };
     const pending = await workerFetch("/jobs/pending-options", { method: "POST", headers: { "content-type": "application/json" }, body: JSON.stringify({ source: url || filename, options }) });
     if (!pending.ok) return Response.json({ error: "Could not save the editing options for this job." }, { status: 502 });
-    const token = process.env.CLIPPER_TOKEN || "";
-    const n8n = process.env.CLIPPER_N8N_URL || "http://127.0.0.1:5678/webhook";
-    const response = await fetch(`${n8n}/gaming-clipper`, {
-      method: "POST", headers: { "content-type": "application/json", "X-Clipper-Token": token }, body: JSON.stringify(payload),
-    });
-    const text = await response.text();
-    return new Response(text, { status: response.status, headers: { "content-type": response.headers.get("content-type") || "application/json" } });
+    // The worker owns the whole pipeline: creating the job starts ingest -> analysis -> plan -> render -> QC -> review.
+    return passResponse(await workerFetch("/jobs", { method: "POST", headers: { "content-type": "application/json" }, body: JSON.stringify(payload) }));
   } catch (error) {
     return Response.json({ error: error instanceof Error ? error.message : "Could not create job" }, { status: 500 });
   }

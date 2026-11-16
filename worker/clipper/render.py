@@ -8,6 +8,7 @@ import os
 import re
 import shutil
 import subprocess
+import time
 from pathlib import Path
 
 from . import config, db, media
@@ -54,7 +55,7 @@ def _base(src: Path, edl: EDL, out: Path, src_info: dict):
     inputs = []
     for i, s in enumerate(edl.segments):
         dur = round(s.end - s.start, 3)
-        inputs += ["-ss", f"{s.start:.3f}", "-t", f"{dur:.3f}", "-i", str(src)]
+        inputs += [*media.hwdec(), "-ss", f"{s.start:.3f}", "-t", f"{dur:.3f}", "-i", str(src)]
         slow = s.speed < 0.999  # slow motion: stretch the picture and the sound (pitch kept) so captions/effects stay in sync
         parts.append(f"[{i}:v]setpts=(PTS-STARTPTS)/{s.speed:.4f}[v{i}];" if slow else f"[{i}:v]setpts=PTS-STARTPTS[v{i}];")
         parts.append(f"[{i}:a]asetpts=PTS-STARTPTS,{f'atempo={s.speed:.4f},' if slow else ''}"
@@ -64,8 +65,7 @@ def _base(src: Path, edl: EDL, out: Path, src_info: dict):
     scale = f"[cv]{bars + ',' if bars else ''}fps=30,scale='min(1920,iw)':-2:flags=lanczos,format=yuv420p[vo]"
     tmp = out.with_suffix(".tmp.mp4")
     media.run(["ffmpeg", "-y", "-hide_banner", "-loglevel", "error", *inputs, "-filter_complex",
-               "".join(parts) + concat + scale, "-map", "[vo]", "-map", "[ca]", "-c:v", "libx264", "-preset", "fast",
-               "-crf", "16", "-g", "30", "-c:a", "aac", "-b:a", "192k", "-ar", "48000", "-movflags", "+faststart",
+               "".join(parts) + concat + scale, "-map", "[vo]", "-map", "[ca]", *media.h264("master"), "-g", "30", "-c:a", "aac", "-b:a", "192k", "-ar", "48000", "-movflags", "+faststart",
                str(tmp)], timeout=1800)
     tmp.rename(out)
 
@@ -136,7 +136,7 @@ def _blur_bg(base: Path, out: Path):
     tmp = out.with_suffix(".tmp.mp4")
     media.run(["ffmpeg", "-y", "-hide_banner", "-loglevel", "error", "-i", str(base), "-an", "-vf",
                "scale=-2:320,crop=ih*9/16:ih,boxblur=12:2,eq=brightness=-0.12:saturation=1.3:contrast=0.9",
-               "-c:v", "libx264", "-preset", "ultrafast", "-crf", "30", "-pix_fmt", "yuv420p", "-r", "30", str(tmp)], timeout=600)
+               *media.h264("bg"), "-r", "30", str(tmp)], timeout=600)
     tmp.rename(out)
 
 
@@ -352,9 +352,19 @@ def render(job_id, idx):
         if o["file"] and not (pub / o["file"]).exists():
             raise Unrecoverable(f"missing asset {o['file']}")
     raw = rd / "raw.mp4"
+    t_render = time.time()
+    fallback_reason = None
     from . import fastrender
     from .manage import load_settings
-    engine = "fast" if load_settings().render_engine == "fast" and fastrender.available() else "remotion"
+    want = load_settings().render_engine
+    if want == "remotion" and not config.RENDER_CPU_FALLBACK:  # GPU worker: the Chrome renderer is not installed/used
+        want = "fast"
+    engine = "fast" if want == "fast" and fastrender.available() else "remotion"
+    if engine == "remotion" and want == "fast":  # fast was requested but cannot run here
+        if not config.RENDER_CPU_FALLBACK:
+            raise RuntimeError("render_failed: fast renderer unavailable (ffmpeg or fonts missing) and CPU fallback is off "
+                               f"(RENDER_CPU_FALLBACK=0); ffmpeg={fastrender.FFMPEG}")
+        fallback_reason = "fast renderer unavailable (ffmpeg or fonts missing)"
     new_props = json.dumps({**props, "_engine": engine}, sort_keys=True)
     old_props = (rd / "props.json").read_text() if (rd / "props.json").exists() else None
     if old_props is not None and old_props != new_props:
@@ -363,8 +373,15 @@ def render(job_id, idx):
     if not raw.exists() and engine == "fast":
         try:
             fastrender.render(props, pub, raw, rd / "fast")
-        except Exception as e:  # noqa: BLE001 - never lose a clip to the fast path: fall back to Remotion
-            db.event(job_id, "warn", "render", f"fast renderer failed, using Remotion: {str(e)[-300:]}", {"clip": idx})
+        except Exception as e:  # noqa: BLE001
+            if not config.RENDER_CPU_FALLBACK:  # GPU worker: fail loudly, never silently drop to the CPU renderer
+                db.q("update clips set render_engine='fast', encoder=%s, render_note=%s where job_id=%s and idx=%s",
+                     (fastrender.encoder(), f"render_failed: {str(e)[-400:]}", job_id, idx))
+                raise RuntimeError(f"render_failed: fast renderer ({fastrender.encoder()}) failed and CPU fallback is off "
+                                   f"(RENDER_CPU_FALLBACK=0): {str(e)[-600:]}") from e
+            fallback_reason = str(e)[-300:]
+            db.event(job_id, "warn", "render", f"CPU fallback: fast renderer failed, using Remotion: {fallback_reason}",
+                     {"clip": idx, "cpu_fallback": True})
             engine = "remotion"
             (rd / "props.json").write_text(json.dumps({**props, "_engine": engine}, sort_keys=True))
     if not raw.exists():
@@ -382,10 +399,15 @@ def render(job_id, idx):
     finalize(raw, tmp)
     tmp.rename(final)
     shutil.copy2(rd / "assets_manifest.json", out_dir / f"clip_{idx:02d}_assets.json") if (rd / "assets_manifest.json").exists() else None
-    db.q("update clips set status='rendered', output_path=%s where job_id=%s and idx=%s", (str(final), job_id, idx))
+    encoder = fastrender.encoder() if engine == "fast" else "libx264 (Remotion, CPU)"
+    note = f"CPU fallback: {fallback_reason}" if fallback_reason else ("CPU renderer selected in settings" if engine == "remotion" else None)
+    secs = round(time.time() - t_render, 2)
+    db.q("update clips set status='rendered', output_path=%s, render_engine=%s, encoder=%s, render_seconds=%s, render_note=%s, "
+         "fail_kind=null where job_id=%s and idx=%s", (str(final), engine, encoder, secs, note, job_id, idx))
     from .queue import enqueue
     enqueue(job_id, "qc", idx, force=True)
-    return {"output": str(final), "duration": props["duration"], "engine": engine}
+    return {"output": str(final), "duration": props["duration"], "engine": engine, "encoder": encoder,
+            "cpu_fallback": bool(fallback_reason), "render_seconds": secs}
 
 
 def _without_cam(area: dict | None, box: dict) -> dict | None:

@@ -1,6 +1,31 @@
-"""Thin ffmpeg/ffprobe helpers."""
+"""Thin ffmpeg/ffprobe helpers, plus the one place that decides how video is encoded/decoded on this host.
+Linux GPU worker: NVDEC decode (-hwaccel cuda, frames handed to CPU filters) + h264_nvenc encode.
+macOS: VideoToolbox for finished clips, libx264 for tiny analysis proxies."""
 import json
+import os
+import platform
 import subprocess
+
+LINUX = platform.system() == "Linux"
+NVENC = LINUX and os.environ.get("NVENC", "1") == "1"
+HWDEC = LINUX and os.environ.get("HWDEC", "1") == "1"
+_CQ = {"proxy": "34", "review": "30", "bg": "32", "master": "18"}
+
+
+def h264(kind: str = "master") -> list[str]:
+    """Video encoder arguments. kind: proxy (analysis/LLM input), review, bg (blurred background), master (clip quality)."""
+    if NVENC:
+        preset = "p5" if kind == "master" else "p1"
+        return ["-c:v", "h264_nvenc", "-preset", preset, "-rc", "vbr", "-cq", _CQ[kind], "-b:v", "0", "-pix_fmt", "yuv420p"]
+    if kind == "master" and platform.system() == "Darwin":
+        return ["-c:v", "h264_videotoolbox", "-b:v", "14M", "-pix_fmt", "yuv420p"]
+    crf = {"proxy": "33", "review": "30", "bg": "30", "master": "16"}[kind]
+    return ["-c:v", "libx264", "-preset", "veryfast" if kind != "master" else "fast", "-crf", crf, "-pix_fmt", "yuv420p"]
+
+
+def hwdec() -> list[str]:
+    """Input option for GPU decoding (put before each -i). Unsupported codecs fall back to software decode."""
+    return ["-hwaccel", "cuda"] if HWDEC else []
 
 
 def run(cmd, timeout=3600):

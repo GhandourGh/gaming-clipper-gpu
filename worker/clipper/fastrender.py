@@ -60,6 +60,11 @@ def emoji_png(ch: str) -> Path | None:
     return _EMOJI.get((ch or "").strip().replace("\ufe0f", ""))
 
 
+def encoder() -> str:
+    """The video encoder the fast renderer uses on this host (NVENC is GPU; VideoToolbox is Apple hardware)."""
+    return "h264_nvenc" if platform.system() == "Linux" else "h264_videotoolbox"
+
+
 def available() -> bool:
     return Path(FFMPEG).exists() and FONTS.exists()
 
@@ -486,7 +491,7 @@ def render(p: dict, pub: Path, out: Path, work: Path) -> None:
     graph = ";".join(fc + amix)
     (work / "graph.txt").write_text(graph)
     tmp = out.with_suffix(".tmp.mp4")
-    video_codec = (["-c:v", "h264_nvenc", "-preset", "p4", "-cq", "19", "-b:v", "0", "-maxrate", "20M"]
+    video_codec = (["-c:v", "h264_nvenc", "-preset", "p5", "-rc", "vbr", "-cq", "19", "-b:v", "0", "-maxrate", "20M", "-bufsize", "40M"]
                    if platform.system() == "Linux" else
                    ["-c:v", "h264_videotoolbox", "-b:v", "14M", "-maxrate", "20M"])
     cmd = [FFMPEG, "-y", "-hide_banner", "-loglevel", "error", *inputs, "-filter_complex_script", str(work / "graph.txt"),

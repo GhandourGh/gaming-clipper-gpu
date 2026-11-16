@@ -76,7 +76,7 @@ export function JobWorkspace({ id }: { id: string }) {
         <JobActions id={id} title={job.title} running={running} onChange={reload}/>
       </div>
     </header>
-    {job.error && <div className="notice error">{job.error}</div>}
+    {job.root_cause ? <div className="notice error"><b>Root cause:</b> {job.root_cause}</div> : job.error && <div className="notice error">{job.error}</div>}
     {job.burned_captions?.present && <div className="notice info"><b>The source already has captions</b> in the {job.burned_captions.where} of the picture
       ({Math.round((job.burned_captions.coverage || 0) * 100)}% of sampled frames, e.g. “{(job.burned_captions.examples || []).slice(0, 2).join("”, “")}”). The editor was told to skip or move ours so they don't overlap.</div>}
 
@@ -93,7 +93,14 @@ export function JobWorkspace({ id }: { id: string }) {
           stageStep("Quality check", st("qc", c.idx)),
           cc.ai_review?.score != null ? { label: "AI review", state: "done", detail: `${cc.ai_review.score.toFixed(0)}/10` } : { label: "AI review", state: "waiting" },
         ];
-        return <article className="pipeline-clip" key={c.idx}><header><span>Clip {c.idx + 1}</span><b>{steps.filter(s => s.state === "done").length}/{steps.length}</b></header><Pipeline steps={steps}/></article>;
+        const fallback = c.render_note?.startsWith("CPU fallback");
+        return <article className="pipeline-clip" key={c.idx}><header><span>Clip {c.idx + 1}</span><b>{steps.filter(s => s.state === "done").length}/{steps.length}</b></header><Pipeline steps={steps}/>
+          {(c.encoder || c.fail_kind) && <p className="muted" style={{ fontSize: "var(--text-sm)", margin: ".4rem 0 0" }}>
+            {c.encoder && <span className={`badge ${fallback ? "warn" : "ok"}`}>{fallback ? "CPU fallback" : c.encoder.includes("nvenc") ? "GPU · NVENC" : c.encoder}</span>}
+            {c.render_seconds != null && <span className="num"> render {Math.round(c.render_seconds)}s</span>}
+            {c.fail_kind && <span className="badge bad"> {c.fail_kind.replace("_", " ")}</span>}
+            {c.render_note && <span title={c.render_note}> · {c.render_note.slice(0, 120)}</span>}</p>}
+        </article>;
       })}
       </div>
       {failedStages.length > 0 && <details className="pipeline-errors"><summary>Error details ({failedStages.length})</summary>

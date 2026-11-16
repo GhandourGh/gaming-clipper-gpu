@@ -20,7 +20,6 @@ from . import config, db, ingest, media
 from .main import A, _clip, _job, _sig, app, job_status
 from .styles import STYLES
 
-N8N = "http://127.0.0.1:5678/webhook"
 e = html.escape
 
 
@@ -38,13 +37,6 @@ def _same_origin(req: Request):
     origin = req.headers.get("origin") or req.headers.get("referer") or ""
     if not origin.startswith((f"http://127.0.0.1:{config.PORT}", f"http://localhost:{config.PORT}")):
         raise HTTPException(403, "cross-origin request blocked")
-
-
-def _n8n(path: str, payload: dict):
-    r = httpx.post(f"{N8N}/{path}", json=payload, headers={"X-Clipper-Token": config.TOKEN}, timeout=20)
-    if r.status_code >= 300:
-        raise HTTPException(502, f"n8n webhook {path} returned {r.status_code}: {r.text[:200]}. Is the workflow published?")
-    return r.json() if r.headers.get("content-type", "").startswith("application/json") else {}
 
 
 CSS = """:root{color-scheme:light dark;--bg:#0f1115;--card:#181b22;--soft:#20242d;--fg:#e8eaf0;--muted:#9aa3b2;--acc:#ffd400;--line:#2a2f3a;--green:#3ddc84;--red:#ff6b6b;--blue:#69a7ff}
@@ -166,7 +158,8 @@ def dashboard_jobs():
 def dashboard_job(job_id: uuid.UUID):
     j = _job(job_id)
     status = job_status(job_id)
-    clips = db.q("select idx, status, review, review_note, candidate, edl, assets, qc, output_path, versions, ai_review, style from clips where job_id=%s order by idx", (job_id,))
+    clips = db.q("select idx, status, review, review_note, candidate, edl, assets, qc, output_path, versions, ai_review, style, "
+                 "render_engine, encoder, render_seconds, render_note, fail_kind from clips where job_id=%s order by idx", (job_id,))
     stages = db.q("select name, clip_idx, status, attempts, error, result, started_at, finished_at from stages where job_id=%s order by clip_idx, started_at nulls last", (job_id,))
     costs = db.q("""select coalesce(units->>'model','Unknown') as model, count(*) as calls,
                     coalesce(sum(coalesce((units->>'in')::bigint,0)+coalesce((units->>'out')::bigint,0)),0) as tokens,
@@ -196,7 +189,8 @@ def dashboard_job(job_id: uuid.UUID):
     return {"job": {"id": str(job_id), "title": j["title"] or f"Job {str(job_id)[:8]}", "status": j["status"],
                     "error": j["error"], "created_at": j["created_at"].isoformat(), "style": (j["meta"] or {}).get("style", "viral"),
                     "elapsed_s": status["elapsed_s"], "cost_usd": status["cost_usd"], "download_bytes": download_bytes, "source_available": source_available,
-                    "burned_captions": (j["meta"] or {}).get("burned_captions")},
+                    "burned_captions": (j["meta"] or {}).get("burned_captions"),
+                    "root_cause": _root_cause(str(job_id)) if j["status"] in ("failed", "done", "no_highlights") else None},
             "clips": clip_data, "stages": stages, "costs": costs, "rejected": rejected}
 
 
@@ -262,10 +256,14 @@ async def ui_submit(request: Request, url: str = Form(""), inbox: str = Form("")
             raise HTTPException(400, "That is not a YouTube video or finished Twitch VOD link.")
     else:
         raise HTTPException(400, "Give a YouTube or Twitch VOD URL, upload a file, or pick one from inbox/.")
-    _n8n("gaming-clipper", payload)
-    time.sleep(1.5)  # n8n creates the job asynchronously
-    j = db.q1("select id from jobs order by updated_at desc limit 1")
-    return RedirectResponse(f"/jobs/{j['id']}/view" if j else "/", status_code=303)
+    from .main import JobIn, create_job
+    out = create_job(JobIn(**payload))
+    return RedirectResponse(f"/jobs/{out['job_id']}/view", status_code=303)
+
+
+def _root_cause(job_id: str):
+    from .pipeline import _first_error
+    return _first_error(job_id)
 
 
 def _thumb(job_id, name) -> Path:
@@ -325,7 +323,8 @@ def regenerate(job_id: str, idx: int, style: str | None, opts: dict | None = Non
     db.q("update clips set style=%s, status='selected', review='pending', versions=%s where job_id=%s and idx=%s",
          (style if style in STYLES else c["style"], db.J(versions), job_id, idx))
     db.event(job_id, "info", "regenerate", f"clip {idx} regenerate requested", {"style": style, "version": len(versions)})
-    _n8n("gaming-clipper-regen", {"job_id": job_id, "idx": idx})
+    from .queue import enqueue
+    enqueue(job_id, "direct", idx, force=True)  # director -> assets -> render -> qc -> review, all in the worker
     return {"idx": idx, "status": "regenerating", "style": style}
 
 

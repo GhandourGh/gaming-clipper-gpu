@@ -29,6 +29,13 @@ export function JobActions({ id, title, running, onChange }: { id: string; title
     catch (e) { setError(e instanceof Error ? e.message : "Could not restart the job"); }
     finally { setBusy(""); }
   }
+  async function call(path: string, what: string, ask?: string) {
+    if (ask && !window.confirm(ask)) return;
+    setBusy(what); setError("");
+    try { await api(path, { method: "POST" }); onChange?.(); router.refresh(); }
+    catch (e) { setError(e instanceof Error ? e.message : `Could not ${what} the job`); }
+    finally { setBusy(""); }
+  }
   async function remove() {
     setBusy("delete"); setError("");
     try { if (await deleteJob(id, title)) router.push("/jobs"); }
@@ -37,6 +44,8 @@ export function JobActions({ id, title, running, onChange }: { id: string; title
   }
 
   return <div style={{ display: "flex", gap: "var(--space-sm)", flexWrap: "wrap", alignItems: "center" }}>
+    {running && <button className="btn" onClick={() => call(`jobs/${id}/cancel`, "cancel", `Cancel "${title}"? Steps already finished are kept.`)} disabled={!!busy}><Trash size={16}/>{busy === "cancel" ? "Cancelling…" : "Cancel"}</button>}
+    {!running && <button className="btn" onClick={() => call(`jobs/${id}/retry`, "retry")} disabled={!!busy} title="Retry failed steps; finished work is reused"><Refresh size={16}/>{busy === "retry" ? "Retrying…" : "Retry failed"}</button>}
     <button className="btn" onClick={startOver} disabled={!!busy || running} title={running ? "Wait for the job to finish" : "Run the whole pipeline again on this video"}><Refresh size={16}/>{busy === "restart" ? "Restarting…" : "Start over"}</button>
     <button className="btn" onClick={remove} disabled={!!busy} title="Delete this job and its files"><Trash size={16}/>{busy === "delete" ? "Deleting…" : "Delete"}</button>
     {error && <span className="notice error" role="alert" style={{ margin: 0 }}>{error}</span>}

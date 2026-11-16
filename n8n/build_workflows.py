@@ -2,12 +2,14 @@
 Usage: python3 build_workflows.py <telegram_chat_id>   -> writes data/n8n_build/*.workflow.json
 Credentials are referenced by ID only; no secret is written to these files."""
 import json
+import os
 import sys
 import uuid
 from pathlib import Path
 
 OUT = Path(__file__).resolve().parents[1] / "data" / "n8n_build"  # gitignored: contains your chat id
-WORKER = "https://rfbevtshgimov3-8787.proxy.runpod.net"
+# Worker base URL. Set CLIPPER_N8N_WORKER_URL when the Pod changes (its proxy URL contains the Pod ID), then re-run deploy.sh.
+WORKER = os.environ.get("CLIPPER_N8N_WORKER_URL", "https://8ugvh4zuuzzwlk-8787.proxy.runpod.net").rstrip("/")
 GEMINI = "https://generativelanguage.googleapis.com/v1beta/models/{{ $json.model }}:generateContent"
 CRED_TOKEN = {"httpHeaderAuth": {"id": "clipperWorkerTk1", "name": "Clipper worker token"}}
 CRED_GEMINI = {"googlePalmApi": {"id": "FNSfjIWeCx9X7gZ9", "name": "Google Gemini(PaLM) Api account"}}
