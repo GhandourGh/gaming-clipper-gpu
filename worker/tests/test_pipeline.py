@@ -1,4 +1,8 @@
+/Users/macos/.zshenv:.:1: no such file or directory: /Users/macos/.cargo/env
 """Worker-owned pipeline: Gemini retry behaviour and lane routing (no network, no database)."""
+import threading
+import time
+
 from clipper import media, pipeline, queue
 
 
@@ -37,10 +41,40 @@ def test_gemini_call_does_not_retry_bad_request(monkeypatch):
 
 
 def test_stage_lanes():
-    assert queue.lane("render") == "gpu" and queue.lane("analyze") == "gpu" and queue.lane("qc") == "gpu"
+    assert queue.lane("render") == "gpu"
+    assert queue.lane("analyze") == "analysis"
+    assert queue.lane("qc") == "cpu"
     assert queue.lane("ingest") == "ingest"
     assert {queue.lane(s) for s in ("plan", "direct", "review", "finish")} == {"llm"}
     assert {"plan", "direct", "review", "finish"} <= set(queue.HANDLERS)
+
+
+def test_parallel_clip_worker_defaults():
+    assert queue.LANE_THREADS["gpu"] >= 2
+    assert queue.LANE_THREADS["analysis"] == 1
+    assert queue.LANE_THREADS["cpu"] >= 2
+    assert queue.LANE_THREADS["ingest"] >= 2
+
+
+def test_two_renders_can_hold_gpu_capacity_together():
+    entered = []
+    release = threading.Event()
+
+    def hold():
+        with queue._gpu_capacity("render"):
+            entered.append(1)
+            release.wait(1)
+
+    threads = [threading.Thread(target=hold) for _ in range(2)]
+    for thread in threads:
+        thread.start()
+    deadline = time.time() + 1
+    while len(entered) < 2 and time.time() < deadline:
+        time.sleep(.01)
+    release.set()
+    for thread in threads:
+        thread.join(1)
+    assert len(entered) == 2
 
 
 def test_h264_args_match_host():

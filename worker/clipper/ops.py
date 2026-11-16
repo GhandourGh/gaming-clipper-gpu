@@ -1,3 +1,4 @@
+/Users/macos/.zshenv:.:1: no such file or directory: /Users/macos/.cargo/env
 """Operations: readiness preflight, GPU telemetry, admin endpoints, scheduled housekeeping and the Pod's idle auto-stop.
 
 /ready proves the GPU path instead of assuming it: it runs a real 1-second h264_nvenc encode, checks libass/drawtext
@@ -27,13 +28,17 @@ ENV_KEYS = {"GEMINI_API_KEY", "TELEGRAM_BOT_TOKEN", "TELEGRAM_CHAT_ID", "OPENROU
             "FREESOUND_API_KEY", "JAMENDO_CLIENT_ID", "SHORTSINTEL_API_KEY", "TRENDSMCP_API_KEY", "AYRSHARE_API_KEY",
             "TWITCH_CLIENT_ID", "TWITCH_CLIENT_SECRET", "DASHBOARD_PASSWORD", "DASHBOARD_URL", "IDLE_STOP_MIN",
             "GEMINI_FREE_TIER", "BUDGET_SINCE", "BUDGET_JOB_USD", "BUDGET_DAY_USD", "BUDGET_TOTAL_USD", "WHISPER_MODEL",
-            "STORY_WHISPER_MODEL", "LLM_PARALLEL", "LLM_THREADS", "LIVE_CHUNK_S", "RETENTION_DAYS", "GPU_USD_PER_HOUR"}
+            "STORY_WHISPER_MODEL", "LLM_PARALLEL", "LLM_THREADS", "GPU_THREADS", "QC_THREADS", "INGEST_THREADS",
+            "LIVE_CHUNK_S", "RETENTION_DAYS", "GPU_USD_PER_HOUR", "MAX_REPLACEMENT_GPU_USD_PER_HOUR"}
 
 
 @app.middleware("http")
 async def _activity(request: Request, call_next):
     global _last_activity
-    if request.url.path not in ("/health", "/ready"):
+    # Dashboard GET polling is observation, not activity. Counting it kept an idle
+    # GPU alive forever while a browser tab was open. Mutations represent real use;
+    # completed stages are accounted for separately by idle_s().
+    if request.method in ("POST", "PUT", "PATCH", "DELETE"):
         _last_activity = time.time()
     return await call_next(request)
 
@@ -138,7 +143,8 @@ def runtime() -> dict:
     up = time.time() - STARTED
     return {"pod_id": os.environ.get("RUNPOD_POD_ID"), "uptime_s": round(up), "idle_s": round(idle),
             "idle_stop_min": IDLE_STOP_MIN, "stop_in_s": round(max(0, IDLE_STOP_MIN * 60 - idle)) if IDLE_STOP_MIN else None,
-            "queue": queue.qsize(), "busy": queue.busy(), "gpu_usd_per_hour": rate or None,
+            "queue": queue.qsize(), "queue_stats": queue.stats(), "busy": queue.busy(), "gpu_usd_per_hour": rate or None,
+            "replacement_gpu_ceiling_usd": float(os.environ.get("MAX_REPLACEMENT_GPU_USD_PER_HOUR", "0.20")),
             "session_cost_usd": round(rate * up / 3600, 3) if rate else None, "git_rev": _git_rev()}
 
 
@@ -236,7 +242,7 @@ def stop_pod(reason: str) -> dict:
     except Exception:  # noqa: BLE001
         pass
     if shutil.which("runpodctl"):
-        code, out = _sh(["runpodctl", "stop", "pod", pod], 60)
+        code, out = _sh(["runpodctl", "pod", "stop", pod], 60)
         if code == 0:
             return {"stopped": True, "via": "runpodctl"}
     key = os.environ.get("RUNPOD_API_KEY")

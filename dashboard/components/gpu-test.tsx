@@ -1,3 +1,4 @@
+/Users/macos/.zshenv:.:1: no such file or directory: /Users/macos/.cargo/env
 "use client";
 
 import { FormEvent, useState } from "react";
@@ -9,7 +10,9 @@ type Gpu = {
   checks: Record<string, Check>;
   gpu: { present: boolean; name?: string; util_pct?: number; mem_used_mb?: number; mem_total_mb?: number; encoder_sessions?: number; temp_c?: number; driver?: string; detail?: string };
   runtime: { pod_id?: string; uptime_s: number; idle_s: number; idle_stop_min: number; stop_in_s?: number | null; queue: number; busy: boolean;
-    gpu_usd_per_hour?: number | null; session_cost_usd?: number | null; git_rev?: string | null };
+    queue_stats?: { workers: Record<string, number>; running: Record<string, number>; queued: Record<string, number> };
+    gpu_usd_per_hour?: number | null; session_cost_usd?: number | null; git_rev?: string | null;
+    replacement_gpu_ceiling_usd?: number };
 };
 
 const LABEL: Record<string, string> = { postgres: "Database", ffmpeg: "FFmpeg + NVENC", whisper: "Whisper (speech)", llm: "Gemini AI", telegram: "Telegram", render: "Renderer", disk: "Volume disk" };
@@ -63,13 +66,17 @@ export function GpuTest() {
           <div><b>Encoder sessions</b><strong className="num">{g?.encoder_sessions ?? "—"}</strong></div>
           <div><b>Temperature</b><strong className="num">{g?.temp_c != null ? `${g.temp_c}°C` : "—"}</strong></div>
           <div><b>Jobs</b><strong>{rt?.busy ? `working (${rt.queue} queued)` : "idle"}</strong></div>
+          <div><b>Parallel clips</b><strong className="num">{rt?.queue_stats?.workers?.gpu ?? "—"}</strong></div>
           <div><b>Uptime</b><strong className="num">{rt ? duration(rt.uptime_s) : "—"}</strong></div>
           <div><b>Auto-stop</b><strong className="num">{rt?.idle_stop_min ? (rt.busy ? "paused while working" : `in ${duration(rt.stop_in_s || 0)}`) : "off"}</strong></div>
           <div><b>This session</b><strong className="num">{rt?.session_cost_usd != null ? `$${rt.session_cost_usd.toFixed(2)}` : "rate not set"}</strong></div>
         </div>
         <p className="muted" style={{ marginTop: ".8rem", fontSize: "var(--text-sm)" }}>Pod {rt?.pod_id || "—"} · driver {g?.driver || "—"} · code {rt?.git_rev || "—"}.
-          {rt?.idle_stop_min ? ` The Pod stops itself after ${rt.idle_stop_min} minutes with no jobs and nobody using the dashboard. Start it again from the Runpod console.`
+          {rt?.idle_stop_min ? ` The Pod stops itself after ${rt.idle_stop_min} minutes with no active jobs. An open dashboard tab no longer keeps the GPU billing. Start it again from the Runpod console.`
             : " Auto-stop is off on this host."}</p>
+        {rt?.replacement_gpu_ceiling_usd != null && <p className="muted" style={{ marginTop: ".35rem", fontSize: "var(--text-sm)" }}>
+          Replacement GPU ceiling: ${rt.replacement_gpu_ceiling_usd.toFixed(2)}/hour.
+        </p>}
       </section>
       <section className="card section">
         <div className="card-pad" style={{ paddingBottom: 0 }}><div className="card-title"><div><h2>Checks</h2><p>Proven on this Pod, not assumed: FFmpeg encodes a real test frame with NVENC.</p></div></div></div>

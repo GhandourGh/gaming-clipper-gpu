@@ -1,9 +1,12 @@
+/Users/macos/.zshenv:.:1: no such file or directory: /Users/macos/.cargo/env
 """Background job engine. Stages are idempotent and resumable: a finished stage is never re-run unless force=True,
 and a restart re-queues whatever was queued/running.
 
 Stages run in lanes so a slow download or a slow LLM call never blocks the GPU:
-  ingest -> downloads/copies (1 thread)
-  gpu    -> analyze, render, qc (1 thread: one GPU, NVENC sessions and VRAM are the limit)
+  ingest -> downloads/copies (INGEST_THREADS threads)
+  analysis -> analyze (1 thread; the shared Whisper model is intentionally serialized)
+  gpu    -> render (GPU_THREADS threads; clips may run concurrently)
+  cpu    -> qc (QC_THREADS threads; QC must not occupy an NVENC/Whisper slot)
   llm    -> plan, direct, review, finish (LLM_THREADS threads; network-bound)
 Hooks (AFTER_DONE / AFTER_FAIL) chain stages, so the pipeline never depends on an outside orchestrator."""
 import os
@@ -11,13 +14,59 @@ import queue as _q
 import threading
 import time
 import traceback
+from contextlib import contextmanager
 
 from . import db
 
 HANDLERS = {}  # stage name -> fn(job_id, clip_idx) -> result dict
-LANE_OF = {"ingest": "ingest", "plan": "llm", "direct": "llm", "review": "llm", "finish": "llm"}  # default lane: gpu
-LANE_THREADS = {"ingest": 1, "gpu": 1, "llm": int(os.environ.get("LLM_THREADS", "3"))}
+LANE_OF = {
+    "ingest": "ingest",
+    "analyze": "analysis",
+    "qc": "cpu",
+    "plan": "llm",
+    "direct": "llm",
+    "review": "llm",
+    "finish": "llm",
+}  # default lane: gpu
+
+
+def _threads(name: str, default: int) -> int:
+    """Read a worker limit without allowing a bad env value to disable a lane."""
+    try:
+        return max(1, int(os.environ.get(name, str(default))))
+    except (TypeError, ValueError):
+        return default
+
+
+LANE_THREADS = {
+    "ingest": _threads("INGEST_THREADS", 2),
+    "analysis": 1,
+    "gpu": _threads("GPU_THREADS", 2),
+    "cpu": _threads("QC_THREADS", 2),
+    "llm": _threads("LLM_THREADS", 3),
+}
 _QS = {lane: _q.Queue() for lane in LANE_THREADS}
+
+
+class _WeightedCapacity:
+    """Atomic weighted semaphore; avoids partial-acquire deadlocks."""
+    def __init__(self, total: int):
+        self.total = total
+        self.available = total
+        self.changed = threading.Condition()
+
+    def acquire(self, count: int):
+        with self.changed:
+            self.changed.wait_for(lambda: self.available >= count)
+            self.available -= count
+
+    def release(self, count: int):
+        with self.changed:
+            self.available = min(self.total, self.available + count)
+            self.changed.notify_all()
+
+
+_GPU_SLOTS = _WeightedCapacity(LANE_THREADS["gpu"])
 MAX_ATTEMPTS = 3
 AFTER_DONE: dict = {}  # stage name -> fn(job_id, clip_idx, result)
 AFTER_FAIL: list = []  # fn(job_id, stage_name, clip_idx, error)
@@ -26,6 +75,21 @@ _started = False
 
 class Unrecoverable(Exception):
     """Raise for errors that retrying cannot fix (bad input, no rights, ...)."""
+
+
+@contextmanager
+def _gpu_capacity(name: str):
+    """Render uses one slot; Whisper analysis temporarily owns the whole GPU.
+
+    This gives real parallel NVENC renders without letting a large Whisper model
+    overlap them and exhaust VRAM. Non-GPU stages pass through immediately.
+    """
+    count = LANE_THREADS["gpu"] if name == "analyze" else (1 if name == "render" else 0)
+    _GPU_SLOTS.acquire(count)
+    try:
+        yield
+    finally:
+        _GPU_SLOTS.release(count)
 
 
 def stage(name):
@@ -41,6 +105,18 @@ def lane(name: str) -> str:
 
 def qsize() -> int:
     return sum(q.qsize() for q in _QS.values())
+
+
+def stats() -> dict:
+    """Small, secret-free queue snapshot for the dashboard and operations checks."""
+    running = db.q("select name, count(*)::int as n from stages where status='running' group by name")
+    queued = db.q("select name, count(*)::int as n from stages where status='queued' group by name")
+    return {
+        "workers": dict(LANE_THREADS),
+        "running": {r["name"]: r["n"] for r in running},
+        "queued": {r["name"]: r["n"] for r in queued},
+        "in_memory": {name: q.qsize() for name, q in _QS.items()},
+    }
 
 
 def get_stage(job_id, name, clip_idx=-1):
@@ -81,7 +157,8 @@ def _run_one(job_id, name, clip_idx):
         return
     t0 = time.time()
     try:
-        result = HANDLERS[name](job_id, clip_idx) or {}
+        with _gpu_capacity(name):
+            result = HANDLERS[name](job_id, clip_idx) or {}
         result["seconds"] = round(time.time() - t0, 2)
         db.q("update stages set status='done', finished_at=now(), result=%s "
              "where job_id=%s and name=%s and clip_idx=%s", (db.J(result), job_id, name, clip_idx))
