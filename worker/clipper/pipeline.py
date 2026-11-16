@@ -98,6 +98,8 @@ def plan(job_id, _idx=-1):
     j = _job(job_id)
     if j["status"] in ("failed", "done", "no_highlights", "expired"):
         return {"skipped": j["status"]}
+    if not (os.environ.get("GEMINI_API_KEY") or any(fallback.keys().values())):
+        raise Unrecoverable("no AI key on the worker: add GEMINI_API_KEY (dashboard GPU page → Keys on the Pod), then Retry")
     t0 = time.time()
     if j["status"] in ("analyzed", "ranking"):
         req = textscore.request(job_id)
@@ -203,7 +205,7 @@ def _first_error(job_id) -> str | None:
     if not r:
         return None
     kind = {"render": "render_failed", "qc": "qc_failed", "direct": "plan_failed", "ingest": "ingest_failed",
-            "analyze": "analysis_failed"}.get(r["name"], f"{r['name']}_failed")
+            "analyze": "analysis_failed", "plan": "ai_unavailable", "review": "review_failed"}.get(r["name"], f"{r['name']}_failed")
     where = f" (clip {r['clip_idx']})" if r["clip_idx"] >= 0 else ""
     return f"{kind}{where}: {(r['error'] or '')[:400]}"
 

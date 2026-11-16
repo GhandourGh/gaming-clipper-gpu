@@ -156,7 +156,7 @@ def _create_job(j: JobIn):
         meta["template"] = j.template
         if j.min_seconds or j.max_seconds:
             meta["length"] = _length(j)
-        db.set_job(jid, status=status, error=None, meta=meta)
+        db.set_job(jid, _force=True, status=status, error=None, meta=meta)
         db.event(jid, "info", "create", f"resubmitted; resuming at status {status}", {"style": meta.get("style")})
         if status != "created":
             pipeline.resume(jid)
@@ -498,7 +498,7 @@ def cancel_job(job_id: uuid.UUID):
     jid = str(job_id)
     _job(jid)
     n = db.q("update stages set status='cancelled', finished_at=now() where job_id=%s and status='queued' returning name", (jid,))
-    db.set_job(jid, status="cancelled", error="cancelled by the owner")
+    db.set_job(jid, _force=True, status="cancelled", error="cancelled by the owner")
     db.event(jid, "warn", "cancel", "job cancelled", {"stages": len(n)})
     return {"job_id": jid, "status": "cancelled", "cancelled_stages": len(n)}
 
@@ -518,7 +518,7 @@ def retry_job(job_id: uuid.UUID):
               "analyzed" if "analyze" in done else "ingested" if "ingest" in done else "created")
     meta = dict(j["meta"] or {})
     meta["t0"] = time.time()
-    db.set_job(jid, status=status, error=None, meta=meta)
+    db.set_job(jid, _force=True, status=status, error=None, meta=meta)
     what = pipeline.resume(jid)
     db.event(jid, "info", "retry", f"retry requested; resuming at {status} ({what})", {})
     return {"job_id": jid, "status": status, "queued": what}
@@ -590,7 +590,7 @@ def restart_job(job_id: uuid.UUID):
     meta["t0"] = time.time()
     for k in ("trends", "tasks"):
         meta.pop(k, None)
-    db.set_job(jid, status="created", error=None, meta=meta)
+    db.set_job(jid, _force=True, status="created", error=None, meta=meta)
     db.event(jid, "info", "create", "started over from the dashboard", {})
     queue.enqueue(jid, "ingest", force=True)
     m = j["meta"] or {}

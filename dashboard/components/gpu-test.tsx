@@ -68,7 +68,8 @@ export function GpuTest() {
           <div><b>This session</b><strong className="num">{rt?.session_cost_usd != null ? `$${rt.session_cost_usd.toFixed(2)}` : "rate not set"}</strong></div>
         </div>
         <p className="muted" style={{ marginTop: ".8rem", fontSize: "var(--text-sm)" }}>Pod {rt?.pod_id || "—"} · driver {g?.driver || "—"} · code {rt?.git_rev || "—"}.
-          The Pod stops itself after {rt?.idle_stop_min || 0} minutes with no jobs and nobody using the dashboard. Start it again from the Runpod console.</p>
+          {rt?.idle_stop_min ? ` The Pod stops itself after ${rt.idle_stop_min} minutes with no jobs and nobody using the dashboard. Start it again from the Runpod console.`
+            : " Auto-stop is off on this host."}</p>
       </section>
       <section className="card section">
         <div className="card-pad" style={{ paddingBottom: 0 }}><div className="card-title"><div><h2>Checks</h2><p>Proven on this Pod, not assumed: FFmpeg encodes a real test frame with NVENC.</p></div></div></div>

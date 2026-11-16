@@ -79,3 +79,23 @@ Cross-cutting: Pod cost guard (idle auto-stop from inside the Pod or a scheduled
 - Which checkout is the base for further work (see section 0)?
 - Should I start a Pod for the Step 1 measurements? (Each start costs money; I will stop it afterwards and report the cost.)
 - Do you want n8n regenerated to point at a configurable worker URL before any Pod is restarted?
+
+## 5. Implementation status (2026-11-16, commits 134a24c and next)
+
+| Area | Status | Evidence |
+|---|---|---|
+| n8n removed from the critical path (plan/direct/review/finish in the worker, Gemini called directly) | Done | local run: ingest → analyze → plan → finish chained by the worker with no n8n call |
+| Stuck-job watchdog | Done, tested | a job forced into `analyzed` with nothing queued was resumed in ~16 s |
+| Cancel / retry APIs, sticky cancel | Done, tested | cancel during a running stage: next stage cancelled, job stays `cancelled`; retry resumes at the next unfinished stage |
+| Root cause instead of "no clip passed QC" | Done, tested | `ai_unavailable: … add GEMINI_API_KEY` shown on the job page |
+| NVENC/NVDEC for every encode, no silent Remotion fallback, engine/encoder per clip | Code done | not GPU-verified (see blocker) |
+| /ready preflight with a real NVENC test encode, GPU telemetry, idle auto-stop | Code done | /ready verified locally (Postgres, ffmpeg, Whisper, disk); GPU rows need a Pod |
+| Pod runtime (pod-start.sh, pod-run.sh, supervisors) | Code done | not run on a Pod (see blocker) |
+| Dashboard on the Pod with access-key login, GPU page, key form | Done, tested locally | login redirect/401 verified; GPU page and job page render; production build passes |
+
+**Blocker:** neither Pod could start on 2026-11-16 ("Your Pod's GPUs are no longer available"; A5000 migration: "no
+instances currently available"). Migrating the A4000 to a new Pod was not done (it creates a new Pod and needs the
+owner's OK). No GPU timings or NVENC evidence exist yet.
+
+**Not done by design:** the Gemini key could not be moved out of n8n automatically (reading decrypted credentials was
+refused); the owner enters it on the dashboard's GPU page. Mac services keep running until the Pod is verified.

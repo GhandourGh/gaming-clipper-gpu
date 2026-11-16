@@ -53,8 +53,10 @@ export function JobWorkspace({ id }: { id: string }) {
   const shared: Step[] = [
     stageStep("Download", st("ingest")),
     stageStep("Analyse", st("analyze")),
-    { label: "Find moments", state: job.status === "ranking" ? "running" : past(["created", "ingested", "analyzed", "ranking"]) ? "done" : "waiting" },
-    { label: "Pick", state: past(["created", "ingested", "analyzed", "ranking"]) ? "done" : "waiting", detail: clips.length ? `${clips.length} picked` : undefined },
+    st("plan") ? stageStep("Find moments", st("plan"))  // the worker's plan stage: transcript score + AI ranking
+      : { label: "Find moments", state: job.status === "ranking" ? "running" : past(["created", "ingested", "analyzed", "ranking", "failed", "cancelled"]) ? "done" : "waiting" },
+    { label: "Pick", state: clips.length ? "done" : st("plan")?.status === "failed" ? "failed" : st("plan")?.status === "done" && !ACTIVE.has(job.status) ? "skipped" : "waiting",
+      detail: clips.length ? `${clips.length} picked` : undefined },
   ];
   const rows = clips.map(c => toRow(id, job.title, c as Clip & { ai_review?: { score?: number } | null }));
   const failedStages = stages.filter(s => s.status === "failed" && s.error);

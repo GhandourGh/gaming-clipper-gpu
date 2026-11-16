@@ -91,7 +91,10 @@ def add_cost(job_id, item, units, usd):
     q("insert into costs(job_id,item,units,usd) values (%s,%s,%s,%s)", (job_id, item, J(units), usd))
 
 
-def set_job(job_id, **kw):
-    sets = ", ".join(f"{k}=%s" for k in kw)
+def set_job(job_id, _force: bool = False, **kw):
+    """Update job columns. A cancelled job keeps status 'cancelled' (a stage that was already running when the owner
+    cancelled must not revive it); retry/restart/resubmit pass _force=True to change it on purpose."""
+    sets = ", ".join(("status=case when status='cancelled' then status else %s end" if k == "status" and not _force else f"{k}=%s")
+                     for k in kw)
     vals = [J(v) if isinstance(v, (dict, list)) else v for v in kw.values()]
     q(f"update jobs set {sets}, updated_at=now() where id=%s", (*vals, job_id))
