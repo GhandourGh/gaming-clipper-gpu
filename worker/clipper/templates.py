@@ -17,6 +17,8 @@ TEMPLATES = {
     "split_50": {"label": "Split 50/50", "mode": "split", "share": 0.5},
     "split_20": {"label": "Split 20/80", "mode": "split", "share": 0.2},
     "gta6_gameplay": {"label": "GTA 6 — Gameplay Focus", "mode": "gta6", "share": None},
+    "gta_cam": {"label": "GTA VI — Framed reaction cam", "mode": "gta_cam", "share": None},
+    "gta_hook": {"label": "GTA VI — Widescreen + hook card", "mode": "gta_hook", "share": None},
 }
 
 
@@ -60,6 +62,15 @@ def prompt_rule(name: str | None) -> str:
         return ("\n## Layout fixed by the owner: GTA 6 GAMEPLAY FOCUS\nThe layout is fixed in code: a webcam card at the top centre, captions "
                 "just under it, and the gameplay as a wide centred card on a blurred copy of the video. Keep captions enabled. "
                 "Hook text, overlays, zooms, sound effects, transitions and music are disabled; do not plan them. If no webcam exists, gameplay only.\n")
+    if t["mode"] == "gta_cam":
+        return ("\n## Layout fixed by the owner: GTA VI FRAMED REACTION CAM\nThe layout is fixed in code: header on top, the streamer's webcam large inside a "
+                "glowing frame, captions right under the frame, the gameplay filling the rest. Keep captions enabled. Hook text, overlays, "
+                "zooms, sound effects, transitions and music are disabled; do not plan them.\n")
+    if t["mode"] == "gta_hook":
+        return ("\n## Layout fixed by the owner: GTA VI WIDESCREEN + HOOK CARD\nThe layout is fixed in code: header on top, a white hook card, the whole "
+                "widescreen gameplay at full width, captions under it. Keep captions enabled. Write `hook.text` as ONE punchy line of at most 8 words "
+                "about this exact moment (it is shown in the card), optionally ending with a single emoji. Overlays, zooms, sound effects, "
+                "transitions and music are disabled; do not plan them.\n")
     return (f"\n## Layout fixed by the owner: SPLIT, webcam {round(t['share'] * 100)}% of the height on top\nlayout.mode must be "
             f"\"split\" with facecam_share {t['share']} and facecam_box = the webcam rectangle in the source frame.\n")
 
@@ -92,6 +103,16 @@ def apply_template(job_id, edl: EDL, c: dict, name: str | None, options: dict | 
                                      "music": edl.music.model_copy(update={"enabled": False}),
                                      "captions": edl.captions.model_copy(update={"enabled": True})})  # the job's captions setting (off) still wins at render time
         return new, f"layout set by template: {t['label']}" + (" (no webcam found; gameplay-only)" if not box else "")
+    if t["mode"] in ("gta_cam", "gta_hook"):  # drawn from layouts.py by the fast renderer
+        box = _detected_box(job_id, c.get("idx")) or (lay.facecam_box.model_dump() if lay.facecam_box else None)
+        note = ""
+        if t["mode"] == "gta_cam" and not box:
+            note = " (no webcam found: widescreen layout instead)"  # render.py makes the same choice
+        upd = {"mode": "fit", "facecam_box": Box.model_validate(box) if box else None, "gameplay_focus_x": 0.5}
+        new = edl.model_copy(update={"layout": lay.model_copy(update=upd), "zooms": [], "overlays": [], "sfx": [], "transitions": [],
+                                     "music": edl.music.model_copy(update={"enabled": False}),
+                                     "captions": edl.captions.model_copy(update={"enabled": True})})
+        return new, f"layout set by template: {t['label']}{note}"
     if t["mode"] == "full":
         upd = {"mode": "full", "facecam_box": None}
         zooms = [z.model_copy(update={"target": "frame"}) if z.target == "facecam" else z for z in edl.zooms]

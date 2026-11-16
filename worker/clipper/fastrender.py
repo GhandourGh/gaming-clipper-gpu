@@ -4,6 +4,7 @@ text stickers drawn by libass (ASS subtitles), flashes as drawbox, hardware H.26
 Audio: source + music (looped, ducked under speech, faded) + SFX, mixed without normalising (finalize() sets loudness).
 Remotion stays the fallback (Settings > render engine) and is used automatically if this renderer fails.
 Needs Homebrew's ffmpeg-full (libass); the system ffmpeg has no subtitle/text filters."""
+import functools
 import os
 import platform
 import re
@@ -204,7 +205,8 @@ def build_ass(p: dict, caption_y: float) -> str:
     th = dict(THEMES.get(p.get("style") or "viral", THEMES["viral"]))
     if p["layout"].get("captionBar") and p["layout"]["mode"] == "split":
         th["size"] = round(th["size"] * 0.8)  # one line that fits inside the caption strip
-    accent, hot = _ass_color(NEON), _ass_color(RED)
+    accent, hot = _ass_color(p.get("captionAccent") or NEON), _ass_color(RED)
+    only_active = bool(p.get("captionOnlyActive"))  # GTA VI presets: only the word being spoken is coloured, the rest solid white
     white = "&H00FFFFFF"
     up = (lambda s: s.upper()) if th["upper"] else (lambda s: s)
     border = 1 if th["stroke"] else 1
@@ -236,7 +238,7 @@ def build_ass(p: dict, caption_y: float) -> str:
                 toks = []
                 for j, x in enumerate(g):
                     is_e = _norm(x["w"]) in emph
-                    color = hot if _norm(x["w"]) in red else accent if (is_e or j == k) else (
+                    color = (accent if j == k else white) if only_active else hot if _norm(x["w"]) in red else accent if (is_e or j == k) else (
                         "&H73FFFFFF" if cap.get("style") == "karaoke" and j > k else white)
                     tag = f"\\c{color}\\fscx{110 if j == k else 100}\\fscy{110 if j == k else 100}\\frz{2 if (is_e and j == k) else 0}"
                     toks.append(f"{{{tag}}}{_esc(up(x['w']))}")
@@ -325,6 +327,21 @@ def duck_expr(words: list[dict]) -> str:
 
 # ---------- main ----------
 
+@functools.lru_cache(maxsize=1)
+def _ffmpeg_major() -> int:
+    import subprocess
+    try:
+        m = re.search(r"version\s+n?(\d+)", subprocess.run([FFMPEG, "-version"], capture_output=True, text=True, timeout=20).stdout)
+        return int(m.group(1)) if m else 0
+    except (OSError, subprocess.SubprocessError, ValueError):
+        return 0
+
+
+def _graph_file_args(path: Path) -> list[str]:
+    """ffmpeg 7 renamed -filter_complex_script to -/filter_complex and 8 removed the old spelling: use the one this build knows."""
+    return ["-/filter_complex", str(path)] if _ffmpeg_major() >= 7 else ["-filter_complex_script", str(path)]
+
+
 def render(p: dict, pub: Path, out: Path, work: Path) -> None:
     pub, out, work = pub.resolve(), out.resolve(), work.resolve()
     work.mkdir(parents=True, exist_ok=True)
@@ -412,6 +429,44 @@ def render(p: dict, pub: Path, out: Path, work: Path) -> None:
         fc.append(f"[ringm]scale={rsc}[rings]")
         fc.append(f"[game][rings]overlay=x='{bx}-{ring // 2}':y='{by}-{ring // 2}':eval=frame:shortest=1[g1]")
         fc.append(f"[g1][cams]overlay=x='{bx}':y='{by}':eval=frame:shortest=1[base]")
+    elif mode == "fit" and (lay.get("gta") or {}).get("game"):
+        # GTA VI presets (layouts.py): blurred copy behind, gameplay (cropped away from the baked-in cam, or the whole 16:9 picture),
+        # the streamer's webcam inside the owner's glowing frame, header, hook card.
+        g = lay["gta"]
+        gm, cm, fl = g["game"], g.get("cam"), g.get("files") or {}
+        cam = cm if (cm and lay.get("facecamBox")) else None
+        has_bg = bool(p.get("bgSrc") and (pub / p["bgSrc"]).exists())
+        srcs = ["gsrc"] + (["csrc"] if cam else []) + ([] if has_bg else ["bsrc"])
+        if len(srcs) > 1:
+            fc.append("[0:v]split=%d%s" % (len(srcs), "".join(f"[{x}]" for x in srcs)))
+        g_in, c_in, b_in = ("gsrc" if len(srcs) > 1 else "0:v"), "csrc", "bsrc"
+        if has_bg:
+            bi = add_input(["-i", str(pub / p["bgSrc"])])
+            fc.append(f"[{bi}:v]scale={W}:{H}:flags=bilinear,setsar=1,fps=30[bg]")
+        else:
+            fc.append(f"[{b_in}]scale=-2:320,crop=180:320,boxblur=12:2,eq=brightness=-0.12,scale={W}:{H},setsar=1[bg]")
+        if gm.get("whole"):  # the whole widescreen picture at full width: nothing is cropped
+            fc.append(f"[{g_in}]scale={gm['w']}:{gm['h']}:flags=bicubic,setsar=1[game]")
+        else:
+            fc.append(_region(g_in, "game", cover_rect(sw, sh, gm["w"], gm["h"], None, gm.get("focusX", 0.5)), gm["w"], gm["h"], ("1", "0.5", "0.5")))
+        fc.append(f"[bg][game]overlay=0:{gm['y']}:shortest=1[gl0]")
+        lab = "gl0"
+        if cam:
+            write_mask(work / "gcam_mask.pgm", cam["w"], cam["h"], cam.get("radius", 16))
+            cmi = add_input(["-loop", "1", "-framerate", "30", "-i", str(work / "gcam_mask.pgm")])
+            fc.append(_region(c_in, "gcamr", cover_rect(sw, sh, cam["w"], cam["h"], lay["facecamBox"]), cam["w"], cam["h"], ("1", "0.5", "0.5")))
+            fc.append(f"[{cmi}:v]format=gray,setsar=1[gcmm]")
+            fc.append("[gcamr][gcmm]alphamerge,format=yuva420p[gcamc]")
+            fc.append(f"[{lab}][gcamc]overlay=x={cam['x']}:y={cam['y']}:shortest=1[gl1]")
+            lab = "gl1"
+        for key, box in (("frame", g.get("frame")), ("hook", g.get("hook")), ("header", g.get("header"))):
+            if not box or not fl.get(key) or not (pub / fl[key]).exists():
+                continue
+            ii = add_input(["-loop", "1", "-framerate", "30", "-i", str(pub / fl[key])])
+            fc.append(f"[{ii}:v]format=rgba,scale={box['w']}:{box['h']}[g_{key}]")
+            fc.append(f"[{lab}][g_{key}]overlay=x={box['x']}:y={box['y']}:shortest=1[gl_{key}]")
+            lab = f"gl_{key}"
+        fc.append(f"[{lab}]null[base]")
     elif mode == "fit":
         fit_h, fit_top = (lay.get("fitH") or round(W * 1.12)) // 2 * 2, lay.get("fitTop") or 300
         cam = lay.get("cam") if lay.get("facecamBox") else None  # webcam card (GTA 6 template), drawn over the blurred background
@@ -518,7 +573,7 @@ def render(p: dict, pub: Path, out: Path, work: Path) -> None:
     video_codec = (["-c:v", "h264_nvenc", "-preset", "p5", "-rc", "vbr", "-cq", "19", "-b:v", "0", "-maxrate", "20M", "-bufsize", "40M"]
                    if platform.system() == "Linux" else
                    ["-c:v", "h264_videotoolbox", "-b:v", "14M", "-maxrate", "20M"])
-    cmd = [FFMPEG, "-y", "-hide_banner", "-loglevel", "error", *inputs, "-filter_complex_script", str(work / "graph.txt"),
+    cmd = [FFMPEG, "-y", "-hide_banner", "-loglevel", "error", *inputs, *_graph_file_args(work / "graph.txt"),
            "-map", "[vout]", "-map", "[aout]", "-t", _f(dur), "-r", "30", *video_codec,
            "-profile:v", "high", "-pix_fmt", "yuv420p",
            "-color_primaries", "bt709", "-color_trc", "bt709", "-colorspace", "bt709", "-g", "60",

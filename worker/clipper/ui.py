@@ -320,6 +320,19 @@ def regenerate(job_id: str, idx: int, style: str | None, opts: dict | None = Non
         cand = dict(c["candidate"] or {})
         cand["opts"] = n
         db.q("update clips set candidate=%s where job_id=%s and idx=%s", (db.J(cand), job_id, idx))
+    if opts and opts.get("template"):  # another layout for this clip only (e.g. compare the two GTA VI presets on one clip)
+        from .templates import TEMPLATES
+        if opts["template"] not in TEMPLATES:
+            raise HTTPException(400, f"unknown layout {opts['template']!r}")
+        cur = db.q1("select candidate from clips where job_id=%s and idx=%s", (job_id, idx))["candidate"] or {}
+        cand = dict(cur)
+        o = dict(cand.get("opts") or {})
+        o["template"] = opts["template"]
+        for k in ("header_text", "hook_text", "frame"):
+            if opts.get(k) is not None:
+                o[k] = opts[k]
+        cand["opts"] = o
+        db.q("update clips set candidate=%s where job_id=%s and idx=%s", (db.J(cand), job_id, idx))
     db.q("update clips set style=%s, status='selected', review='pending', versions=%s where job_id=%s and idx=%s",
          (style if style in STYLES else c["style"], db.J(versions), job_id, idx))
     db.event(job_id, "info", "regenerate", f"clip {idx} regenerate requested", {"style": style, "version": len(versions)})
@@ -329,10 +342,12 @@ def regenerate(job_id: str, idx: int, style: str | None, opts: dict | None = Non
 
 
 @app.post("/jobs/{job_id}/clips/{idx}/regenerate")
-def api_regenerate(job_id: uuid.UUID, idx: int, request: Request, style: str | None = None, mode: str | None = None, edit: str | None = None):
+def api_regenerate(job_id: uuid.UUID, idx: int, request: Request, style: str | None = None, mode: str | None = None, edit: str | None = None,
+                   template: str | None = None, header_text: str | None = None, hook_text: str | None = None, frame: str | None = None):
     from .main import auth
     auth(request.headers.get("x-clipper-token", ""))
-    return regenerate(str(job_id), idx, style, {"mode": mode, "edit": edit})
+    return regenerate(str(job_id), idx, style, {"mode": mode, "edit": edit, "template": template, "header_text": header_text,
+                                                "hook_text": hook_text, "frame": frame})
 
 
 @app.post("/ui/regenerate/{job_id}/{idx}")

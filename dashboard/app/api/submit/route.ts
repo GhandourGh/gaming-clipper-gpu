@@ -25,7 +25,7 @@ export async function POST(request: Request) {
       fresh: form.get("fresh") === "1",
       captions: ["overlay", "bar", "off"].includes(String(form.get("captions"))) ? String(form.get("captions")) : null,
       engine: ["stories", "moments"].includes(String(form.get("engine"))) ? String(form.get("engine")) : "stories",
-      template: ["auto", "full", "split_50", "split_20", "gta6_gameplay"].includes(String(form.get("template"))) ? String(form.get("template")) : "auto",
+      template: ["auto", "full", "split_50", "split_20", "gta6_gameplay", "gta_cam", "gta_hook"].includes(String(form.get("template"))) ? String(form.get("template")) : "auto",
     };
     if (!payload.rights_confirmed) return Response.json({ error: "Confirm that you have the rights to edit this video." }, { status: 400 });
     if (!url && !filename) return Response.json({ error: "Add a YouTube or Twitch VOD URL, upload a file, or choose an inbox file." }, { status: 400 });
@@ -38,6 +38,7 @@ export async function POST(request: Request) {
       clip_strategy: g("clip_strategy") || "single",
       facecam_size: g("facecam_size") || null, facecam_position: g("facecam_position") || null,
       game_logo: g("game_logo") || null, gameplay_crop: g("gameplay_crop") || null,
+      header_text: form.has("header_text") ? g("header_text") : null, hook_text: form.has("hook_text") ? g("hook_text") : null, frame: g("frame") || null,
     };
     const pending = await workerFetch("/jobs/pending-options", { method: "POST", headers: { "content-type": "application/json" }, body: JSON.stringify({ source: url || filename, options }) });
     if (!pending.ok) return Response.json({ error: "Could not save the editing options for this job." }, { status: 502 });

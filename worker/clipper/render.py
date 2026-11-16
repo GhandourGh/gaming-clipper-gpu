@@ -171,6 +171,8 @@ def captions_mode(job_id, idx: int | None = None) -> str:
 
 def build_props(job_id, idx, edl: EDL, base_info: dict, tr: dict | None = None) -> dict:
     job_meta = (db.q1("select meta from jobs where id=%s", (job_id,)) or {}).get("meta") or {}
+    from .gemini import clip_meta
+    job_meta = {**job_meta, **{k: v for k, v in clip_meta(job_id, idx).items() if k in ("template", "header_text", "hook_text", "frame")}}
     gta = job_meta.get("template") == "gta6_gameplay"
     cap_mode = captions_mode(job_id, idx)
     if cap_mode == "off":
@@ -254,6 +256,23 @@ def build_props(job_id, idx, edl: EDL, base_info: dict, tr: dict | None = None) 
         trans.append({"at": back, "kind": "flash"})
         sfx.append({"at": max(0.0, back - 0.12), "file": "sfx/whoosh.wav", "gainDb": -6})
     lay = edl.layout
+    from . import layouts
+    spec = None  # the two GTA VI presets (gta_cam / gta_hook), drawn by layouts.py + the fast renderer
+    if layouts.KINDS.get(job_meta.get("template")):
+        box = lay.facecam_box.model_dump() if lay.facecam_box else None
+        kind = layouts.KINDS[job_meta["template"]]
+        if kind == "cam" and not box:
+            kind = "hook"  # no webcam to frame: the widescreen layout
+        frame = job_meta.get("frame") or "neon_palm"
+        ov = config.job_dir(job_id) / f"render_{idx}" / "public" / "ov"
+        hook_text = (job_meta.get("hook_text") or getattr(edl.hook, "text", "") or "").strip()
+        assets = layouts.build_assets(kind, ov, job_meta.get("header_text") or "", hook_text)
+        if kind == "cam" and frame != "none" and layouts.FRAMES.get(frame) and layouts.FRAMES[frame].exists():
+            shutil.copy2(layouts.FRAMES[frame], ov / f"frame_{frame}.png")
+            assets["files"]["frame"] = ov / f"frame_{frame}.png"
+        spec = layouts.geometry(kind, base_info["width"], base_info["height"], box if kind == "cam" else None,
+                                frame if kind == "cam" else None, assets["hook_size"])
+        spec["files"] = {k: f"ov/{v.name}" for k, v in assets["files"].items()}
     from .templates import gta_geometry
     geo = gta_geometry(job_meta.get("gameplay_crop"), lay.facecam_box.model_dump() if lay.facecam_box else None,
                        base_info["width"], base_info["height"], job_meta.get("facecam_size")) if gta else None
@@ -265,11 +284,14 @@ def build_props(job_id, idx, edl: EDL, base_info: dict, tr: dict | None = None) 
                        "gameplayFocusX": lay.gameplay_focus_x, "facecamShare": 0.5 if lay.mode == "split" else lay.facecam_share,
                        "bubbleCorner": lay.bubble_corner, "bubbleShape": lay.bubble_shape, "bubbleSize": lay.bubble_size,
                        "captionBar": cap_mode == "bar" and lay.mode == "split" and edl.captions.enabled,
-                       **({"fitH": geo["fitH"], "fitTop": geo["fitTop"], "cam": geo["cam"]} if geo else {})},
+                       **({"fitH": geo["fitH"], "fitTop": geo["fitTop"], "cam": geo["cam"]} if geo else {}),
+                       **({"gta": spec} if spec else {})},
             "zooms": zooms, "captions": {**edl.captions.model_dump(), "words": words if edl.captions.enabled else []},
-            "overlays": overlays, "sfx": sfx, "transitions": trans, "hook": {**edl.hook.model_dump(), "enabled": not gta}, "music": _music_props(edl),
-            "captionScale": 0.9 if gta else 1, "captionOffsetY": 0, "captionY": geo["captionY"] if geo else None, "zoomScale": 1,
-            "logos": ([{"file": f"logos/{logo_slug}.png", "x": 0.82, "y": 0.105, "w": 285, "opacity": 0.94}] if logo_on else [])}
+            "overlays": overlays, "sfx": sfx, "transitions": trans, "hook": {**edl.hook.model_dump(), "enabled": not gta and not spec}, "music": _music_props(edl),
+            "captionScale": 0.9 if gta else 1, "captionOffsetY": 0,
+            "captionY": spec["captionY"] if spec else (geo["captionY"] if geo else None), "zoomScale": 1,
+            **({"captionAccent": layouts.PINK, "captionOnlyActive": True} if spec else {}),
+            "logos": ([{"file": f"logos/{logo_slug}.png", "x": 0.82, "y": 0.105, "w": 285, "opacity": 0.94}] if logo_on and not spec else [])}
 
 
 # Footage whose framing is already composed (trailers, cutscenes, montages) is left on a static crop; a virtual camera
@@ -325,6 +347,10 @@ def render(job_id, idx):
     for f in sorted((config.RENDERER / "src").glob("*.ts*")):  # renderer code change => re-render
         h.update(f.read_bytes())
     h.update(Path(__file__).with_name("fastrender.py").read_bytes())  # same for the fast renderer
+    h.update(Path(__file__).with_name("layouts.py").read_bytes())  # and the GTA VI layout code
+    from .gemini import clip_meta
+    h.update(json.dumps({k: v for k, v in clip_meta(job_id, idx).items() if k in (
+        "template", "header_text", "hook_text", "frame", "gameplay_crop", "facecam_size", "captions", "caption_look")}, sort_keys=True).encode())  # a new layout is a new render
     key = h.hexdigest()[:12]
     stamp = rd / "edl.key"
     seg_key = hashlib.sha256(json.dumps(clip["edl"]["segments"], sort_keys=True).encode()).hexdigest()[:12]
@@ -359,7 +385,7 @@ def render(job_id, idx):
             ga = gameplay_area(_gray_frames(pub / "base.mp4", bi["duration"], 16), edl.layout.facecam_box.model_dump())
             ga_file.write_text(json.dumps({"seg": seg_stamp.read_text(), "area": ga}))
         props["layout"]["gameplayArea"] = _without_cam(json.loads(ga_file.read_text())["area"], edl.layout.facecam_box.model_dump())
-    fixed_crop = props.get("template") == "gta6_gameplay" and ((job["meta"] or {}).get("gameplay_crop") or "center") != "auto"
+    fixed_crop = bool(props["layout"].get("gta")) or (props.get("template") == "gta6_gameplay" and ((job["meta"] or {}).get("gameplay_crop") or "center") != "auto")
     props["layout"]["gameplayFocusPath"] = None if fixed_crop else _reframe_path(  # a chosen crop (centred, left, right, whole) never moves
         rd, pub / "base.mp4", edl, bi, props["layout"].get("gameplayArea"),
         (clip.get("candidate") or {}).get("content_type"), seg_stamp.read_text())

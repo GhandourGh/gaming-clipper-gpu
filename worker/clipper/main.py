@@ -59,7 +59,7 @@ class JobIn(BaseModel):
     fresh: bool = Field(False, description="always create a new job, even if this video was processed before")
     captions: str | None = Field(None, pattern="^(overlay|bar|off)$", description="captions over the video, in their own strip, or none")
     engine: str = Field("stories", pattern="^(stories|moments)$", description="stories links related moments across the full source; moments uses the legacy local-window clipper")
-    template: str = Field("auto", pattern="^(auto|full|split_50|split_20|gta6_gameplay)$", description="layout template")
+    template: str = Field("auto", pattern="^(auto|full|split_50|split_20|gta6_gameplay|gta_cam|gta_hook)$", description="layout template")
 
 
 def _length(j) -> list[int] | None:
@@ -182,12 +182,15 @@ class OptionsIn(BaseModel):
     min_seconds: int | None = Field(None, ge=8, le=150)
     max_seconds: int | None = Field(None, ge=10, le=180)
     captions: str | None = Field(None, pattern="^(overlay|bar|off)$")
-    template: str | None = Field(None, pattern="^(auto|full|split_50|split_20|gta6_gameplay)$")
+    template: str | None = Field(None, pattern="^(auto|full|split_50|split_20|gta6_gameplay|gta_cam|gta_hook)$")
     clip_strategy: str | None = Field(None, pattern="^(single|gta_launch_mix)$")
     facecam_size: str | None = Field(None, pattern="^(small|medium|large)$")
     facecam_position: str | None = Field(None, pattern="^(top_left|top_right|mid_left|mid_right)$")
     game_logo: str | None = Field(None, pattern="^(?:[a-z0-9_-]{1,40}|none)$")
     gameplay_crop: str | None = Field(None, pattern="^(auto|left|center|right|fit)$")
+    header_text: str | None = Field(None, max_length=40)   # GTA VI presets: the streamer name in the header ("SPEED ×")
+    hook_text: str | None = Field(None, max_length=80)     # GTA VI hook card: your own text instead of the AI's
+    frame: str | None = Field(None, pattern="^(neon_palm|none)$")  # GTA VI framed cam: the glowing frame around the webcam
 
 
 def _apply_options(jid: str, o: "OptionsIn") -> dict:
@@ -202,8 +205,9 @@ def _apply_options(jid: str, o: "OptionsIn") -> dict:
         meta["clips"] = o.clips
     if o.min_seconds or o.max_seconds:
         meta["length"] = _length(o)
-    for k in ("captions", "template", "clip_strategy", "facecam_size", "facecam_position", "game_logo", "gameplay_crop"):
-        if getattr(o, k):
+    for k in ("captions", "template", "clip_strategy", "facecam_size", "facecam_position", "game_logo", "gameplay_crop",
+              "header_text", "hook_text", "frame"):
+        if getattr(o, k) is not None and (getattr(o, k) != "" or k in ("header_text", "hook_text")):
             meta[k] = getattr(o, k)
     if meta.get("template") != "gta6_gameplay":
         meta["clip_strategy"] = "single"
@@ -640,7 +644,7 @@ class LiveStreamIn(BaseModel):
     auto_clip: bool = True
     clips: int = Field(3, ge=1, le=8)
     style: str | None = Field(None, pattern="^(viral|funny|cinematic|fast|minimal)$")
-    template: str = Field("gta6_gameplay", pattern="^(auto|full|split_50|split_20|gta6_gameplay)$")
+    template: str = Field("gta6_gameplay", pattern="^(auto|full|split_50|split_20|gta6_gameplay|gta_cam|gta_hook)$")
     captions: str = Field("off", pattern="^(overlay|bar|off)$")
     gameplay_crop: str = Field("auto", pattern="^(auto|left|center|right|fit)$")
     facecam_size: str = Field("medium", pattern="^(small|medium|large)$")
@@ -653,7 +657,7 @@ class LiveStreamPatch(BaseModel):
     topic: str | None = Field(None, max_length=200)
     game: str | None = Field(None, max_length=60)
     clips: int | None = Field(None, ge=1, le=8)
-    template: str | None = Field(None, pattern="^(auto|full|split_50|split_20|gta6_gameplay)$")
+    template: str | None = Field(None, pattern="^(auto|full|split_50|split_20|gta6_gameplay|gta_cam|gta_hook)$")
     captions: str | None = Field(None, pattern="^(overlay|bar|off)$")
     gameplay_crop: str | None = Field(None, pattern="^(auto|left|center|right|fit)$")
     facecam_size: str | None = Field(None, pattern="^(small|medium|large)$")
