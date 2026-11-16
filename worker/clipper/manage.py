@@ -129,11 +129,14 @@ def health() -> dict:
         out["database"] = {"ok": True, "detail": "Postgres reachable"}
     except Exception as e:  # noqa: BLE001
         out["database"] = {"ok": False, "detail": str(e)[:120]}
-    try:
-        r = httpx.get("http://127.0.0.1:5678/healthz", timeout=2)
-        out["n8n"] = {"ok": r.status_code == 200, "detail": "n8n running" if r.status_code == 200 else f"HTTP {r.status_code}"}
-    except httpx.HTTPError:
-        out["n8n"] = {"ok": False, "detail": "n8n not reachable on :5678"}
+    if config.N8N_HEALTH_URL == "external":
+        out["n8n"] = {"ok": True, "detail": "n8n orchestrator runs on dashboard host"}
+    else:
+        try:
+            r = httpx.get(config.N8N_HEALTH_URL, timeout=2)
+            out["n8n"] = {"ok": r.status_code == 200, "detail": "n8n running" if r.status_code == 200 else f"HTTP {r.status_code}"}
+        except httpx.HTTPError:
+            out["n8n"] = {"ok": False, "detail": "n8n health check failed"}
     du = shutil.disk_usage(config.DATA)
     used = sum(f.stat().st_size for f in config.JOBS.rglob("*") if f.is_file()) if config.JOBS.exists() else 0
     out["disk"] = {"ok": du.free > 5e9, "detail": f"{du.free / 1e9:.0f} GB free", "free_gb": round(du.free / 1e9, 1), "jobs_gb": round(used / 1e9, 2)}

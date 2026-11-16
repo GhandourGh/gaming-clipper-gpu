@@ -35,7 +35,7 @@ PG_LOG="$STATE/postgres.log"
 if [[ ! -s "$PG_DATA/PG_VERSION" ]]; then
   mkdir -p "$PG_DATA"
   chown -R postgres:postgres "$PG_DATA" "$STATE"
-  runuser -u postgres -- "$PG_BIN/initdb" -D "$PG_DATA" --auth-local=trust --auth-host=scram-sha-256
+  runuser -u postgres -- "$PG_BIN/initdb" -D "$PG_DATA" --encoding=UTF8 --locale=C.UTF-8 --auth-local=trust --auth-host=scram-sha-256
 fi
 chown -R postgres:postgres "$PG_DATA"
 if ! runuser -u postgres -- "$PG_BIN/pg_ctl" -D "$PG_DATA" status >/dev/null 2>&1; then

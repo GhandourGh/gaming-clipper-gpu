@@ -16,6 +16,7 @@ for p in (DATA, INBOX, JOBS, ASSET_CACHE):
 
 TOKEN = os.environ.get("CLIPPER_TOKEN", "")
 PORT = int(os.environ.get("CLIPPER_PORT", "8787"))
+N8N_HEALTH_URL = os.environ.get("N8N_HEALTH_URL", "http://127.0.0.1:5678/healthz")
 DB_DSN = os.environ.get(
     "CLIPPER_DB_DSN",
     f"postgresql://clipper:{os.environ.get('CLIPPER_DB_PASSWORD', '')}@127.0.0.1:5435/clipper",
