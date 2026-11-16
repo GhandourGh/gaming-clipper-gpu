@@ -9,8 +9,16 @@ ENV_FILE="${CLIPPER_ENV_FILE:-/workspace/clipper.env}"
 mkdir -p "$STATE" "$STATE/apt" "$STATE/hf"
 log() { echo "[$(date -u +%T)] $*"; }
 T0=$(date +%s)
-exec 9>/tmp/clipper-pod-run.lock  # one run at a time (boot, /api/setup and /admin/update can overlap)
-flock -w 600 9 || { log "another pod-run did not finish in 10 min; giving up"; exit 1; }
+# One run at a time (boot, /api/setup and /admin/update can overlap). A lock directory holding our PID: nothing we start
+# inherits it, and a lock left by a dead run is taken over.
+LOCK=/tmp/clipper-pod-run.lock.d
+for _ in $(seq 1 120); do
+  if mkdir "$LOCK" 2>/dev/null; then echo $$ > "$LOCK/pid"; break; fi
+  kill -0 "$(cat "$LOCK/pid" 2>/dev/null || echo 0)" 2>/dev/null || { rm -rf "$LOCK"; continue; }
+  sleep 5
+done
+[[ "$(cat "$LOCK/pid" 2>/dev/null)" == "$$" ]] || { log "another pod-run is still running after 10 min; giving up"; exit 1; }
+trap 'rm -rf "$LOCK"' EXIT
 
 # ---------- environment (loaded here, so every supervised process gets it) ----------
 if [[ -f "$ENV_FILE" ]]; then set -a; source "$ENV_FILE"; set +a; fi
@@ -164,7 +172,7 @@ supervise() {  # supervise NAME CMD...: restart CMD 3 s after it exits, forever;
   local name="$1"; shift
   stop_sup "$name"
   setsid bash -c 'while true; do echo "== start $(date -u +%FT%TZ)"; "$@"; echo "== exited $? $(date -u +%FT%TZ)"; sleep 3; done' _ "$@" \
-    >>"$STATE/$name.log" 2>&1 < /dev/null 9>&- &  # 9>&-: services must not inherit (and hold) the pod-run lock
+    >>"$STATE/$name.log" 2>&1 < /dev/null &
   echo $! > "$STATE/$name.sup.pid"
 }
 pkill -f "uvicorn clipper.main:app" 2>/dev/null; pkill -f "next start" 2>/dev/null; pkill -f "next-server" 2>/dev/null; sleep 1
