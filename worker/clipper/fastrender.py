@@ -5,6 +5,7 @@ Audio: source + music (looped, ducked under speech, faded) + SFX, mixed without 
 Remotion stays the fallback (Settings > render engine) and is used automatically if this renderer fails.
 Needs Homebrew's ffmpeg-full (libass); the system ffmpeg has no subtitle/text filters."""
 import os
+import platform
 import re
 import shutil
 from pathlib import Path
@@ -482,9 +483,12 @@ def render(p: dict, pub: Path, out: Path, work: Path) -> None:
     graph = ";".join(fc + amix)
     (work / "graph.txt").write_text(graph)
     tmp = out.with_suffix(".tmp.mp4")
-    cmd = [FFMPEG, "-y", "-hide_banner", "-loglevel", "error", *inputs, "-/filter_complex", str(work / "graph.txt"),
-           "-map", "[vout]", "-map", "[aout]", "-t", _f(dur), "-r", "30",
-           "-c:v", "h264_videotoolbox", "-b:v", "14M", "-maxrate", "20M", "-profile:v", "high", "-pix_fmt", "yuv420p",
+    video_codec = (["-c:v", "h264_nvenc", "-preset", "p4", "-cq", "19", "-b:v", "0", "-maxrate", "20M"]
+                   if platform.system() == "Linux" else
+                   ["-c:v", "h264_videotoolbox", "-b:v", "14M", "-maxrate", "20M"])
+    cmd = [FFMPEG, "-y", "-hide_banner", "-loglevel", "error", *inputs, "-filter_complex_script", str(work / "graph.txt"),
+           "-map", "[vout]", "-map", "[aout]", "-t", _f(dur), "-r", "30", *video_codec,
+           "-profile:v", "high", "-pix_fmt", "yuv420p",
            "-color_primaries", "bt709", "-color_trc", "bt709", "-colorspace", "bt709", "-g", "60",
            "-c:a", "aac", "-b:a", "192k", "-ar", "48000", str(tmp)]
     import subprocess
