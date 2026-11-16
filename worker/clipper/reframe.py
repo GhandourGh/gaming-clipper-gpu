@@ -181,16 +181,22 @@ def focus_path(video: Path, duration: float, region: tuple[float, float] = (0.0,
 
 def path_expr(keys: list[tuple[float, float]]) -> str:
     """ffmpeg expression of t giving focus_x: linear between keyframes (they are dense enough to read as smooth), held
-    before the first and after the last."""
+    before the first and after the last. Built as a balanced tree of if(lt(t,..)): a long clip has hundreds of keyframes,
+    and a linear chain of that depth is rejected by ffmpeg's expression parser ("Missing ')' or too many args")."""
     f = lambda x: f"{x:.4f}".rstrip("0").rstrip(".") or "0"  # noqa: E731
-    expr = f(keys[-1][1])
-    for (t0, v0), (t1, v1) in reversed(list(zip(keys, keys[1:]))):
-        if t1 - t0 < 0.003:
-            seg = f(v1)
-        else:
-            seg = f"{f(v0)}+({f(v1 - v0)})*(t-{f(t0)})/{f(t1 - t0)}"
-        expr = f"if(lt(t,{f(t1)}),{seg},{expr})"
-    return f"if(lt(t,{f(keys[0][0])}),{f(keys[0][1])},{expr})"
+
+    def seg(i: int) -> str:  # keys[i] -> keys[i + 1]
+        (t0, v0), (t1, v1) = keys[i], keys[i + 1]
+        return f(v1) if t1 - t0 < 0.003 else f"{f(v0)}+({f(v1 - v0)})*(t-{f(t0)})/{f(t1 - t0)}"
+
+    def tree(lo: int, hi: int) -> str:  # segments lo..hi
+        if lo == hi:
+            return seg(lo)
+        mid = (lo + hi) // 2
+        return f"if(lt(t,{f(keys[mid + 1][0])}),{tree(lo, mid)},{tree(mid + 1, hi)})"
+
+    inner = f"if(lt(t,{f(keys[-1][0])}),{tree(0, len(keys) - 2)},{f(keys[-1][1])})" if len(keys) > 1 else f(keys[-1][1])
+    return f"if(lt(t,{f(keys[0][0])}),{f(keys[0][1])},{inner})"
 
 
 def metrics(keys: list[tuple[float, float]], duration: float, window: float = 0.316) -> dict:
