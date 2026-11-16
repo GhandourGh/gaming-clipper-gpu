@@ -615,6 +615,17 @@ def _snap(job_id, edl: EDL, c: dict) -> tuple[EDL, list[str], str | None]:
             last_main["end"] = round(prev[-1]["e"] + 0.35, 3)
             notes.append(f"ending moved back to {last_main['end']:.2f}s, the end of the previous sentence")
         edl = edl.model_copy(update={"segments": [type(edl.segments[0]).model_validate(s) for s in snapped]})
+    # nonstop speech has no pause to snap to: never leave a cut INSIDE a word, cut on the word's edge instead
+    moved = False
+    for seg in snapped:
+        for w in words:
+            if w["s"] + 0.02 < seg["start"] < w["e"] - 0.02:  # same tolerance as QC (timing._inside_word)
+                seg["start"], moved = round(w["s"], 3), True
+            if w["s"] + 0.02 < seg["end"] < w["e"] - 0.02:
+                seg["end"], moved = round(w["e"], 3), True
+    if moved:
+        notes.append("cuts moved to word edges (no pause nearby)")
+        edl = edl.model_copy(update={"segments": [type(edl.segments[0]).model_validate(s) for s in snapped]})
     mid = None
     if timing.ends_mid_sentence(last_main["end"], words):
         mid = (f"the clip ends mid-sentence at {last_main['end']:.2f}s; end the last segment where the sentence ends "
