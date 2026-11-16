@@ -104,7 +104,8 @@ def run_remotion(args: list[str], env: dict, timeout: int):
     """Run remotion in its own process group so a timeout or crash also kills the headless Chrome children
     (plain subprocess.run only kills npx and leaves Chrome tabs eating RAM)."""
     import signal
-    pr = subprocess.Popen(["npx", "remotion", *args], cwd=config.RENDERER, stdout=subprocess.PIPE, stderr=subprocess.PIPE,
+    npx = shutil.which("npx") or "/workspace/clipper-runtime/node-v20/bin/npx"
+    pr = subprocess.Popen([npx, "remotion", *args], cwd=config.RENDERER, stdout=subprocess.PIPE, stderr=subprocess.PIPE,
                           text=True, env=env, start_new_session=True)
     try:
         out, err = pr.communicate(timeout=timeout)
