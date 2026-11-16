@@ -689,7 +689,10 @@ def save_edl(job_id, idx: int, resp: dict) -> dict:
         data = extract_json(resp)
         raw = json.dumps(data)
         edl = EDL.model_validate(data)
+        from .edl import fit_story_ranges
+        edl, fit_notes = fit_story_ranges(edl, rs)  # trim into the story ranges first, then snap cuts to word gaps
         edl, snap_notes, mid = _snap(job_id, edl, c)
+        snap_notes = fit_notes + snap_notes
         jmeta = clip_meta(job_id, idx)
         length = jmeta.get("length")
         edl, dead_notes = _cut_dead_air(job_id, edl, length, idx)
