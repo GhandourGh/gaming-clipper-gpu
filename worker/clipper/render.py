@@ -70,6 +70,18 @@ def _base(src: Path, edl: EDL, out: Path, src_info: dict):
     tmp.rename(out)
 
 
+def _hold_tail(base: Path, hold: float):
+    """The source had no quiet stretch after the last word (speech runs on). Hold the last frame and add silence so
+    the clip does not stop dead on the final word (QC end_room). Re-encodes the short base once; idempotent via the room check."""
+    info = media.probe(base)
+    tmp = base.with_suffix(".hold.mp4")
+    media.run(["ffmpeg", "-y", "-hide_banner", "-loglevel", "error", "-i", str(base),
+               "-vf", f"tpad=stop_mode=clone:stop_duration={hold:.3f}", "-af", f"apad=pad_dur={hold:.3f}",
+               "-t", f"{info['duration'] + hold:.3f}", *media.h264("master"), "-g", "30",
+               "-c:a", "aac", "-b:a", "192k", "-ar", "48000", "-movflags", "+faststart", str(tmp)], timeout=600)
+    tmp.replace(base)
+
+
 def _norm(t: str) -> str:
     return re.sub(r"[^\w']", "", t.lower())
 
@@ -326,6 +338,13 @@ def render(job_id, idx):
     _base(Path(job["source_path"]), edl, pub / "base.mp4", job["meta"]["source"])
     bi = media.probe(pub / "base.mp4")
     props = build_props(job_id, idx, edl, bi)
+    cw = ((props.get("captions") or {}).get("words") or []) if (props.get("captions") or {}).get("enabled", True) else []
+    if cw:
+        missing = 0.5 - (props["duration"] - cw[-1]["e"])  # the last caption word needs ~0.5 s of room after it
+        if missing >= 0.05:
+            _hold_tail(pub / "base.mp4", min(0.5, round(missing + 0.02, 3)))
+            bi = media.probe(pub / "base.mp4")
+            props = build_props(job_id, idx, edl, bi)
     for logo in props.get("logos") or []:
         src_logo = config.RENDERER / "public" / logo["file"]
         dst_logo = pub / logo["file"]
