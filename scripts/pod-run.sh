@@ -12,7 +12,14 @@ T0=$(date +%s)
 
 # ---------- environment (loaded here, so every supervised process gets it) ----------
 if [[ -f "$ENV_FILE" ]]; then set -a; source "$ENV_FILE"; set +a; fi
-: "${CLIPPER_TOKEN:?CLIPPER_TOKEN is required in $ENV_FILE}"
+if [[ -z "${CLIPPER_TOKEN:-}" ]]; then  # brand-new Pod: generate a worker token; the owner can replace it via /api/setup
+  CLIPPER_TOKEN="$(openssl rand -hex 24)"; touch "$ENV_FILE"; chmod 600 "$ENV_FILE"; echo "CLIPPER_TOKEN=$CLIPPER_TOKEN" >> "$ENV_FILE"
+  log "generated a CLIPPER_TOKEN in $ENV_FILE"
+fi
+if [[ ! -f "$STATE/setup-done" ]]; then  # one-time setup code, shown in the Runpod console log (never in boot.log)
+  [[ -s "$STATE/setup-code" ]] || { openssl rand -hex 5 > "$STATE/setup-code"; chmod 600 "$STATE/setup-code"; }
+  echo "CLIPPER SETUP CODE: $(cat "$STATE/setup-code")  (use once with POST /api/setup)" > /proc/1/fd/1 2>/dev/null || true
+fi
 : "${CLIPPER_DB_PASSWORD:=clipper-$(echo "$CLIPPER_TOKEN" | sha256sum | cut -c1-24)}"
 export CLIPPER_TOKEN CLIPPER_DB_PASSWORD CLIPPER_ROOT="$ROOT" CLIPPER_STATE="$STATE" CLIPPER_ENV_FILE="$ENV_FILE"
 export CLIPPER_DB_DSN="postgresql://clipper:${CLIPPER_DB_PASSWORD}@127.0.0.1:5435/clipper"
