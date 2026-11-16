@@ -28,6 +28,7 @@ FAMILY = {"gta6_gameplay", "gta_cam", "gta_hook"}  # templates that belong to th
 EMOJI_RE = re.compile("[\U0001F000-\U0001FAFF☀-➿⬀-⯿️‍\U0001F3FB-\U0001F3FF]+")
 
 HEADER_Y, HEADER_H = 96, 150
+MAX_GAME_H = 900     # tallest gameplay panel in the widescreen layout (a vertical source is cropped to this)
 CAM_MARGIN = 0.035   # share of the frame width kept clear around a detected baked-in camera
 CAM_W = 720            # the frame is two thirds of the canvas width
 EMOJI_FONTS = [(Path("/usr/share/fonts/truetype/noto/NotoColorEmoji.ttf"), 109),
@@ -124,7 +125,9 @@ def geometry(kind: str, src_w: int, src_h: int, cam_box: dict | None, frame: str
                 h, focus, overlap = hh, f2, o2
         g["game"] = {"x": 0, "y": top, "w": W, "h": h, "whole": False, "focusX": focus, "camVisible": round(overlap, 3)}
     else:
-        gh = round(W * src_h / src_w) // 2 * 2  # the whole 16:9 picture at full width
+        natural = round(W * src_h / src_w) // 2 * 2  # the whole picture at full width: 608 px for a 16:9 stream
+        gh = min(natural, MAX_GAME_H)  # a phone video would be far taller than the screen has room for: show a centred band of it
+        whole = gh == natural
         if hook_size:  # the owner wrote a hook: a white card between the header and the picture
             hw, hh = hook_size
             hook_y = HEADER_Y + HEADER_H + 40
@@ -132,7 +135,7 @@ def geometry(kind: str, src_w: int, src_h: int, cam_box: dict | None, frame: str
             top = hook_y + hh + 56
         else:  # no hook card: the picture sits a little lower under the header
             top = HEADER_Y + HEADER_H + 150
-        g["game"] = {"x": 0, "y": top, "w": W, "h": gh, "whole": True, "focusX": 0.5}
+        g["game"] = {"x": 0, "y": top, "w": W, "h": gh, "whole": whole, "focusX": 0.5}
         g["captionY"] = top + gh + 120 + caption_shift
     return g
 

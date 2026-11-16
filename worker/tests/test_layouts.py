@@ -95,3 +95,10 @@ def test_caption_shift_moves_the_captions_only():
     a = L.geometry("hook", 1920, 1080, None, None, None, 0)
     b = L.geometry("hook", 1920, 1080, None, None, None, 60)
     assert b["captionY"] == a["captionY"] + 60 and b["game"] == a["game"]
+
+
+def test_a_vertical_phone_video_is_cropped_to_a_band_not_stretched_off_the_screen():
+    g = L.geometry("hook", 1080, 1920, None, None, None)["game"]
+    assert g["h"] == L.MAX_GAME_H and g["whole"] is False and g["y"] + g["h"] < 1500    # captions still have room below
+    wide = L.geometry("hook", 1920, 1080, None, None, None)["game"]
+    assert wide["whole"] is True and wide["h"] == 608                                     # a 16:9 stream is still shown whole
