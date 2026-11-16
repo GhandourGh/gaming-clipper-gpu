@@ -203,6 +203,9 @@ def apply_ramps(edl: EDL, cap: int) -> tuple[EDL, list[str]]:
     return edl.model_copy(update={"segments": segs, "ramps": []}), notes
 
 
+SNAP_SLACK = 2.5  # word/sentence snapping may move a cut this far past a story range's edge
+
+
 def fit_story_ranges(edl: EDL, allowed_ranges) -> tuple[EDL, list[str]]:
     """Repair instead of reject: trim a segment into the story range it overlaps (>= 0.8 s), drop one with no overlap.
     Runs BEFORE word snapping, so the snapped cuts still land in word gaps."""
@@ -210,7 +213,7 @@ def fit_story_ranges(edl: EDL, allowed_ranges) -> tuple[EDL, list[str]]:
         return edl, []
     notes, fixed = [], []
     for s in edl.segments:
-        if any(s.start >= a - 1.0 and s.end <= b + 1.0 for a, b in allowed_ranges):
+        if any(s.start >= a - SNAP_SLACK and s.end <= b + SNAP_SLACK for a, b in allowed_ranges):
             fixed.append(s)
             continue
         best = max(allowed_ranges, key=lambda r: min(s.end, r[1]) - max(s.start, r[0]))
@@ -259,7 +262,7 @@ def check(edl: EDL, win_start: float, win_end: float, length: tuple[float, float
         errors.append(f"segments must stay inside the clip window {win_start:.2f}-{win_end:.2f}s")
     if allowed_ranges:
         for s in segs:
-            if not any(s.start >= a - 1.0 and s.end <= b + 1.0 for a, b in allowed_ranges):
+            if not any(s.start >= a - SNAP_SLACK and s.end <= b + SNAP_SLACK for a, b in allowed_ranges):
                 errors.append(f"segment {s.start:.2f}-{s.end:.2f} is outside the evidence-backed story ranges")
     total = sum(s.out_len for s in segs)
     lo, hi = length if length else (15, 92)

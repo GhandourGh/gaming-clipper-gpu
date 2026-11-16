@@ -511,6 +511,8 @@ def retry_job(job_id: uuid.UUID):
     if _busy(jid):
         raise HTTPException(409, "this job is still working")
     db.q("delete from stages where job_id=%s and status in ('failed','cancelled')", (jid,))
+    for f in (config.job_dir(jid) / "analysis").glob("edl_*_last_error.json"):  # a retried clip gets its full plan attempts
+        f.unlink(missing_ok=True)
     db.q("update clips set status=case when edl is null then 'selected' else 'planned' end, fail_kind=null "
          "where job_id=%s and status in ('failed','qc_failed')", (jid,))
     done = {s["name"] for s in db.q("select name from stages where job_id=%s and clip_idx=-1 and status='done'", (jid,))}

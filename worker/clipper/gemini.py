@@ -725,8 +725,8 @@ def save_edl(job_id, idx: int, resp: dict) -> dict:
                 if look == "clean":
                     edl.captions.position = "lower"
         warnings = snap_notes + warnings
-        if mid:
-            errors.append(mid)
+        if mid:  # repaired on the first two attempts; the last one keeps the clip with a warning instead of failing it
+            (errors if prior < 2 else warnings).append(mid)
     except ValidationError as e:
         errors = [f"{'.'.join(map(str, x['loc']))}: {x['msg']}" for x in e.errors()]
     except (ValueError, json.JSONDecodeError) as e:
