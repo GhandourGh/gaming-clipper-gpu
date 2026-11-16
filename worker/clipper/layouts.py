@@ -28,6 +28,7 @@ FAMILY = {"gta6_gameplay", "gta_cam", "gta_hook"}  # templates that belong to th
 EMOJI_RE = re.compile("[\U0001F000-\U0001FAFF☀-➿⬀-⯿️‍\U0001F3FB-\U0001F3FF]+")
 
 HEADER_Y, HEADER_H = 96, 150
+CAM_MARGIN = 0.035   # share of the frame width kept clear around a detected baked-in camera
 CAM_W = 720            # the frame is two thirds of the canvas width
 EMOJI_FONTS = [(Path("/usr/share/fonts/truetype/noto/NotoColorEmoji.ttf"), 109),
                (Path("/System/Library/Fonts/Apple Color Emoji.ttc"), 160)]
@@ -68,7 +69,8 @@ def crop_focus(src_w: int, src_h: int, win_w: int, win_h: int, cam_box: dict | N
     wf = min(1.0, (win_w / win_h) * src_h / src_w)  # window width as a share of the source width
     if not cam_box or wf >= 0.999:
         return default, 0.0
-    c0, c1 = cam_box["x"], cam_box["x"] + cam_box["w"]
+    # the detected box is the face area; the camera the streamer drew is a little bigger: keep a margin so no edge of it peeks in
+    c0, c1 = max(0.0, cam_box["x"] - CAM_MARGIN), min(1.0, cam_box["x"] + cam_box["w"] + CAM_MARGIN)
     mid = (1 - wf) / 2
     best = None
     for i in range(61):
