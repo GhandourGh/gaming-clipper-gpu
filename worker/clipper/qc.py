@@ -43,7 +43,8 @@ def check_file(path: Path, props: dict | None, silence_d: float | None = 2.0) ->
     add("duration", exp is None or abs(info["duration"] - exp) < 0.2, f"{info['duration']:.2f}s (expected {exp})")
     # full decode + black frames + silence + loudness in one pass
     sd = silence_d if silence_d is not None else 600  # effectively off, but ebur128 still runs
-    p = media.run(["ffmpeg", "-hide_banner", "-nostats", "-i", str(path), "-vf", "blackdetect=d=0.5:pix_th=0.08",
+    # Ignore sub-second cinematic fades; flag only a sustained blank section that viewers would perceive as a defect.
+    p = media.run(["ffmpeg", "-hide_banner", "-nostats", "-i", str(path), "-vf", "blackdetect=d=0.8:pix_th=0.08",
                    "-af", f"silencedetect=n=-50dB:d={sd:g},ebur128=peak=true", "-f", "null", "-"], timeout=900)
     err = p.stderr
     blacks = re.findall(r"black_start:([\d.]+) black_end:([\d.]+)", err)
