@@ -1,4 +1,3 @@
-/Users/macos/.zshenv:.:1: no such file or directory: /Users/macos/.cargo/env
 """Operations: readiness preflight, GPU telemetry, admin endpoints, scheduled housekeeping and the Pod's idle auto-stop.
 
 /ready proves the GPU path instead of assuming it: it runs a real 1-second h264_nvenc encode, checks libass/drawtext

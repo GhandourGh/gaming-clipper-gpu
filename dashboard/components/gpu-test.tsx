@@ -1,4 +1,3 @@
-/Users/macos/.zshenv:.:1: no such file or directory: /Users/macos/.cargo/env
 "use client";
 
 import { FormEvent, useState } from "react";

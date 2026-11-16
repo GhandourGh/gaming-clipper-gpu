@@ -1,4 +1,3 @@
-/Users/macos/.zshenv:.:1: no such file or directory: /Users/macos/.cargo/env
 """Background job engine. Stages are idempotent and resumable: a finished stage is never re-run unless force=True,
 and a restart re-queues whatever was queued/running.
 

@@ -1,4 +1,3 @@
-/Users/macos/.zshenv:.:1: no such file or directory: /Users/macos/.cargo/env
 """Worker-owned pipeline: Gemini retry behaviour and lane routing (no network, no database)."""
 import threading
 import time
