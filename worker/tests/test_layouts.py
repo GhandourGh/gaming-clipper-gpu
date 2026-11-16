@@ -107,3 +107,9 @@ def test_a_vertical_phone_video_is_cropped_to_a_band_not_stretched_off_the_scree
     assert g["h"] == L.MAX_GAME_H and g["whole"] is False and g["y"] + g["h"] < 1500    # captions still have room below
     wide = L.geometry("hook", 1920, 1080, None, None, None)["game"]
     assert wide["whole"] is True and wide["h"] == 608                                     # a 16:9 stream is still shown whole
+
+
+def test_the_header_is_drawn_only_when_switched_on(tmp_path):
+    off = L.build_assets("hook", tmp_path / "a", "SPEED ×", "")
+    on = L.build_assets("hook", tmp_path / "b", "SPEED ×", "", True)
+    assert "header" not in off["files"] and "header" in on["files"] and on["files"]["header"].exists()

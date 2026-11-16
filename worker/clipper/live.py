@@ -118,7 +118,7 @@ def add_stream(ref: str, rights_confirmed: bool, topic: str = "", game: str = ""
                clips: int = 3, style: str | None = None, name: str | None = None, template: str = "gta6_gameplay",
                captions: str = "off", gameplay_crop: str = "auto", facecam_size: str = "medium",
                facecam_position: str = "top_left", header_text: str = "", hook_text: str = "", frame: str = "neon_palm",
-               mix_layouts: list[str] | None = None) -> dict:
+               mix_layouts: list[str] | None = None, show_header: bool = False) -> dict:
     if not rights_confirmed:
         raise ValueError("confirm that you own this stream or have the creator's permission to clip it")
     platform, channel, url = parse_ref(ref)
@@ -128,7 +128,7 @@ def add_stream(ref: str, rights_confirmed: bool, topic: str = "", game: str = ""
     s = {"name": nm, "platform": platform, "channel": channel, "url": url, "topic": topic.strip()[:200],
          "game": game.strip()[:60], "auto_clip": bool(auto_clip), "clips": max(1, min(8, int(clips))), "style": style,
          "template": template, "captions": captions, "gameplay_crop": gameplay_crop, "facecam_size": facecam_size,
-         "facecam_position": facecam_position, "header_text": header_text.strip()[:40], "hook_text": hook_text.strip()[:80],
+         "facecam_position": facecam_position, "header_text": header_text.strip()[:40], "show_header": bool(show_header), "hook_text": hook_text.strip()[:80],
          "frame": frame if frame in ("neon_palm", "none") else "neon_palm",
          "mix_layouts": [x for x in (mix_layouts or []) if x in ("gta_cam", "gta_hook")] or ["gta_cam", "gta_hook"],
          "enabled": True, "rights_confirmed": True, "added": time.time()}

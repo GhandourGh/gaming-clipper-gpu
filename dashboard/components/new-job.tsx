@@ -196,6 +196,7 @@ export function NewJob() {
             <small>{template === "gta6_gameplay" ? "Wide, centred gameplay on a blurred copy of the video (no black bars), the streamer's webcam in a card at the top centre and your captions right under it. Clips without a webcam show the gameplay only." : "Auto adapts to the footage and keeps the gameplay visible. Split puts the webcam on top."}</small></div>
           {(template === "gta_cam" || template === "gta_hook" || template === "gta_mix") && <div className="template-settings wide" aria-label="GTA VI preset settings">
             <div className="template-controls">
+              <label className="field" style={{ display: "flex", gap: ".5rem", alignItems: "center" }}><input type="checkbox" name="show_header"/><span>Show the header at the top (name + GTA VI logo)</span></label>
               <label className="field"><span>Header text</span><input name="header_text" defaultValue="SPEED ×" maxLength={40}/><small>Shown big at the top, next to the GTA VI logo. Clear it to show only the logo.</small></label>
               {template === "gta_hook" && <label className="field"><span>Hook text (optional)</span><input name="hook_text" maxLength={80} placeholder="Empty: the AI writes one for each clip"/><small>Goes in the white card. A single emoji at the end works.</small></label>}
                             {template === "gta_mix" && <fieldset className="field" style={{ border: 0, padding: 0, margin: 0 }}><span>Layouts to mix</span>

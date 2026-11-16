@@ -22,6 +22,7 @@ SIZES = ("small", "medium", "large")
 class TextEditIn(BaseModel):
     hook_text: str | None = Field(None, max_length=80)      # "" removes the card
     header_text: str | None = Field(None, max_length=40)    # "" shows only the logo
+    show_header: bool | None = None                          # the header at the top (name + GTA VI logo); off unless chosen
     caption_size: str | None = Field(None, pattern="^(small|medium|large)$")
     caption_shift: int | None = Field(None, ge=-300, le=300)  # px: positive moves the captions down
 
@@ -36,7 +37,7 @@ def _clip(job_id, idx: int) -> dict:
 def _current(job_id, idx: int) -> dict:
     m = clip_meta(str(job_id), idx)
     return {"template": m.get("template"), "editable": m.get("template") in layouts.KINDS,
-            "hook_text": m.get("hook_text") or "", "header_text": m.get("header_text") or "",
+            "hook_text": m.get("hook_text") or "", "header_text": m.get("header_text") or "", "show_header": bool(m.get("show_header")),
             "caption_size": m.get("caption_size") or "medium", "caption_shift": int(m.get("caption_shift") or 0)}
 
 

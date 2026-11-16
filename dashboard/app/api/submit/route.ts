@@ -40,6 +40,7 @@ export async function POST(request: Request) {
       game_logo: g("game_logo") || null, gameplay_crop: g("gameplay_crop") || null,
       header_text: form.has("header_text") ? g("header_text") : null, hook_text: form.has("hook_text") ? g("hook_text") : null, frame: g("frame") || null,
       mix_layouts: String(form.get("template")) === "gta_mix" ? form.getAll("mix_layouts").map(String) : null,
+      show_header: String(form.get("template")).startsWith("gta_") ? form.get("show_header") === "on" : null,
     };
     const pending = await workerFetch("/jobs/pending-options", { method: "POST", headers: { "content-type": "application/json" }, body: JSON.stringify({ source: url || filename, options }) });
     if (!pending.ok) return Response.json({ error: "Could not save the editing options for this job." }, { status: 502 });

@@ -172,7 +172,7 @@ def captions_mode(job_id, idx: int | None = None) -> str:
 def build_props(job_id, idx, edl: EDL, base_info: dict, tr: dict | None = None) -> dict:
     job_meta = (db.q1("select meta from jobs where id=%s", (job_id,)) or {}).get("meta") or {}
     from .gemini import clip_meta
-    job_meta = {**job_meta, **{k: v for k, v in clip_meta(job_id, idx).items() if k in ("template", "header_text", "hook_text", "frame", "caption_size", "caption_shift")}}
+    job_meta = {**job_meta, **{k: v for k, v in clip_meta(job_id, idx).items() if k in ("template", "header_text", "show_header", "hook_text", "frame", "caption_size", "caption_shift")}}
     gta = job_meta.get("template") == "gta6_gameplay"
     cap_mode = captions_mode(job_id, idx)
     if cap_mode == "off":
@@ -266,7 +266,7 @@ def build_props(job_id, idx, edl: EDL, base_info: dict, tr: dict | None = None) 
         frame = job_meta.get("frame") or "neon_palm"
         ov = config.job_dir(job_id) / f"render_{idx}" / "public" / "ov"
         hook_text = (job_meta.get("hook_text") or "").strip()  # only text the owner wrote: the AI's own hook was not what they wanted
-        assets = layouts.build_assets(kind, ov, job_meta.get("header_text") or "", hook_text)
+        assets = layouts.build_assets(kind, ov, job_meta.get("header_text") or "", hook_text, bool(job_meta.get("show_header")))
         if kind == "cam" and frame != "none" and layouts.FRAMES.get(frame) and layouts.FRAMES[frame].exists():
             shutil.copy2(layouts.FRAMES[frame], ov / f"frame_{frame}.png")
             assets["files"]["frame"] = ov / f"frame_{frame}.png"
@@ -351,7 +351,7 @@ def render(job_id, idx):
     h.update(Path(__file__).with_name("layouts.py").read_bytes())  # and the GTA VI layout code
     from .gemini import clip_meta
     h.update(json.dumps({k: v for k, v in clip_meta(job_id, idx).items() if k in (
-        "template", "header_text", "hook_text", "frame", "gameplay_crop", "facecam_size", "captions", "caption_look", "caption_size", "caption_shift")}, sort_keys=True).encode())  # a new layout is a new render
+        "template", "header_text", "show_header", "hook_text", "frame", "gameplay_crop", "facecam_size", "captions", "caption_look", "caption_size", "caption_shift")}, sort_keys=True).encode())  # a new layout is a new render
     key = h.hexdigest()[:12]
     stamp = rd / "edl.key"
     seg_key = hashlib.sha256(json.dumps(clip["edl"]["segments"], sort_keys=True).encode()).hexdigest()[:12]

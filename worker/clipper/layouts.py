@@ -249,13 +249,15 @@ def hook_card_png(text: str, out: Path, max_w: int = 920) -> tuple[Path, tuple[i
     return out, (w, h)
 
 
-def build_assets(kind: str, out_dir: Path, header_text: str, hook_text: str) -> dict:
+def build_assets(kind: str, out_dir: Path, header_text: str, hook_text: str, show_header: bool = False) -> dict:
     """Write the header (and hook card) images into out_dir. Names carry a hash of their content, so a changed text re-draws."""
     out_dir.mkdir(parents=True, exist_ok=True)
     tag = lambda *a: hashlib.sha1("|".join(a).encode()).hexdigest()[:10]  # noqa: E731
-    files = {"header": out_dir / f"header_{tag(header_text, str(LOGO.stat().st_mtime_ns) if LOGO.exists() else '')}.png"}
-    if not files["header"].exists():
-        header_png(header_text, files["header"])
+    files = {}
+    if show_header:  # the header (name + GTA VI logo) is drawn only when the owner switched it on
+        files["header"] = out_dir / f"header_{tag(header_text, str(LOGO.stat().st_mtime_ns) if LOGO.exists() else '')}.png"
+        if not files["header"].exists():
+            header_png(header_text, files["header"])
     size = None
     if kind == "hook" and (hook_text or "").strip():
         files["hook"] = out_dir / f"hook_{tag(hook_text)}.png"
