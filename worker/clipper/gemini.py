@@ -604,6 +604,17 @@ def _snap(job_id, edl: EDL, c: dict) -> tuple[EDL, list[str], str | None]:
         snapped = ext
     edl = edl.model_copy(update={"segments": [type(edl.segments[0]).model_validate(s) for s in snapped]})
     last_main = [s for s in snapped if s.get("role", "main") == "main"][-1]
+    if timing.ends_mid_sentence(last_main["end"], words):  # finish the sentence (or end at the previous one) instead of failing
+        more = [w for w in tr["words"] if last_main["end"] - 0.02 <= w["s"] <= last_main["end"] + 8.0]
+        fin = next((w for w in more if timing.SENT_END.search(w["w"])), None)
+        prev = [w for w in words if w["e"] <= last_main["end"] and w["s"] > last_main["start"] + 2.0 and timing.SENT_END.search(w["w"])]
+        if fin:
+            last_main["end"] = round(fin["e"] + 0.35, 3)
+            notes.append(f"ending moved to {last_main['end']:.2f}s so the sentence finishes")
+        elif prev:
+            last_main["end"] = round(prev[-1]["e"] + 0.35, 3)
+            notes.append(f"ending moved back to {last_main['end']:.2f}s, the end of the previous sentence")
+        edl = edl.model_copy(update={"segments": [type(edl.segments[0]).model_validate(s) for s in snapped]})
     mid = None
     if timing.ends_mid_sentence(last_main["end"], words):
         mid = (f"the clip ends mid-sentence at {last_main['end']:.2f}s; end the last segment where the sentence ends "
@@ -696,6 +707,7 @@ def save_edl(job_id, idx: int, resp: dict) -> dict:
         edl, fit_notes = fit_story_ranges(edl, rs)  # trim into the story ranges first, then snap cuts to word gaps
         edl, snap_notes, mid = _snap(job_id, edl, c)
         snap_notes = fit_notes + snap_notes
+        c = {**c, "end": max(c["end"], max(s.end for s in edl.segments))}  # a finished sentence may run past the window
         jmeta = clip_meta(job_id, idx)
         length = jmeta.get("length")
         edl, dead_notes = _cut_dead_air(job_id, edl, length, idx)

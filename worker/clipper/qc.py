@@ -86,8 +86,17 @@ def qc(job_id, idx):
     # cut integrity: planned cuts in word gaps, no mid-sentence ending, room after the last word
     try:
         tpath = config.job_dir(job_id) / "analysis" / "transcript.json"
-        words = (json.loads(tpath.read_text()).get("words") or []) if tpath.exists() else []
+        tr = json.loads(tpath.read_text()) if tpath.exists() else {}
+        words = tr.get("words") or []
         segs = ((clip.get("edl") or {}).get("segments") or []) if isinstance(clip.get("edl"), dict) else []
+        if words and segs and config.CAPTION_ALIGN and not (clip.get("candidate") or {}).get("story"):
+            try:  # the editor snapped cuts to the aligned word times: judge them on the same times
+                from .align import align_words
+                a = config.job_dir(job_id) / "analysis"
+                lo, hi = min(x["start"] for x in segs) - 2, max(x["end"] for x in segs) + 2
+                words = align_words(words, a / "audio.wav", lo, hi, tr.get("language"), cache=a / "aligned.json")
+            except Exception:  # noqa: BLE001 - fall back to the raw transcript times
+                pass
         cutcheck.merge(res, cutcheck.edl_checks(segs, words))
         if props:
             cutcheck.merge(res, cutcheck.output_checks(props, props["duration"]))

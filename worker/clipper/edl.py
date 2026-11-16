@@ -261,8 +261,10 @@ def check(edl: EDL, win_start: float, win_end: float, length: tuple[float, float
     if min(s.start for s in segs) < win_start - 1.0 or max(s.end for s in segs) > win_end + 1.0:
         errors.append(f"segments must stay inside the clip window {win_start:.2f}-{win_end:.2f}s")
     if allowed_ranges:
+        last_main = max((s for s in segs if s.role == "main"), key=lambda s: s.end, default=None)
         for s in segs:
-            if not any(s.start >= a - SNAP_SLACK and s.end <= b + SNAP_SLACK for a, b in allowed_ranges):
+            tail = 8.5 if s is last_main else SNAP_SLACK  # the last line may run on until its sentence ends
+            if not any(s.start >= a - SNAP_SLACK and s.end <= b + tail for a, b in allowed_ranges):
                 errors.append(f"segment {s.start:.2f}-{s.end:.2f} is outside the evidence-backed story ranges")
     total = sum(s.out_len for s in segs)
     lo, hi = length if length else (15, 92)
