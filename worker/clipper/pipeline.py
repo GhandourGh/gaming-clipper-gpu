@@ -128,6 +128,12 @@ def plan(job_id, _idx=-1):
         trend_hints(job_id)
     except Exception as e:  # noqa: BLE001 - trend hints are optional
         db.event(job_id, "warn", "trends", f"trend hints skipped: {str(e)[:200]}", {})
+    if (_job(job_id)["meta"] or {}).get("template") == "gta_mix":
+        from . import mix
+        try:  # each clip gets the layout that suits it, and neighbours differ (stored per clip, read by the director + renderer)
+            mix.assign(job_id)
+        except Exception as e:  # noqa: BLE001 - a clip without a layout is planned like "auto": never lose the job over it
+            db.event(job_id, "warn", "layout", f"layout mix failed ({str(e)[:160]}); clips use the AI's own layout", {})
     for c in chosen:
         enqueue(job_id, "direct", c["idx"])
     return {"clips": len(chosen), "rank_seconds": rank_s}

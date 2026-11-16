@@ -19,6 +19,8 @@ TEMPLATES = {
     "gta6_gameplay": {"label": "GTA 6 — Gameplay Focus", "mode": "gta6", "share": None},
     "gta_cam": {"label": "GTA VI — Framed reaction cam", "mode": "gta_cam", "share": None},
     "gta_hook": {"label": "GTA VI — Widescreen + hook card", "mode": "gta_hook", "share": None},
+    # not a layout itself: mix.py gives every clip of the job its own gta_cam / gta_hook (a clip without one is planned like "auto")
+    "gta_mix": {"label": "GTA VI — AI mix (a layout per clip)", "mode": None, "share": None},
 }
 
 

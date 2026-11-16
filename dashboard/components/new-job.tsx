@@ -69,6 +69,7 @@ const TEMPLATES = [
   { id: "gta6_gameplay", label: "GTA 6 — Gameplay Focus" },
   { id: "gta_cam", label: "GTA VI — Framed reaction cam" },
   { id: "gta_hook", label: "GTA VI — Widescreen + hook card" },
+  { id: "gta_mix", label: "GTA VI — AI mix (a layout per clip)" },
 ];
 
 export function NewJob() {
@@ -89,7 +90,7 @@ export function NewJob() {
   const [look, setLook] = useState("pop");
   const pickTemplate = (value: string) => {
     setTemplate(value);
-    if (value === "gta6_gameplay" || value === "gta_cam" || value === "gta_hook") {
+    if (value === "gta6_gameplay" || value === "gta_cam" || value === "gta_hook" || value === "gta_mix") {
       setCaptions("overlay");   // captions stay on: karaoke, right under the webcam card
       setLook("karaoke");
       setOpt(o => ({ ...o, zoom: "off", sfx: "off" }));
@@ -193,11 +194,15 @@ export function NewJob() {
                 <span><i className={`tmpl-pic ${t.id}`} aria-hidden="true"><b/><b/></i>{t.label}</span></label>
             ))}</div>
             <small>{template === "gta6_gameplay" ? "Wide, centred gameplay on a blurred copy of the video (no black bars), the streamer's webcam in a card at the top centre and your captions right under it. Clips without a webcam show the gameplay only." : "Auto adapts to the footage and keeps the gameplay visible. Split puts the webcam on top."}</small></div>
-          {(template === "gta_cam" || template === "gta_hook") && <div className="template-settings wide" aria-label="GTA VI preset settings">
+          {(template === "gta_cam" || template === "gta_hook" || template === "gta_mix") && <div className="template-settings wide" aria-label="GTA VI preset settings">
             <div className="template-controls">
               <label className="field"><span>Header text</span><input name="header_text" defaultValue="SPEED ×" maxLength={40}/><small>Shown big at the top, next to the GTA VI logo. Clear it to show only the logo.</small></label>
               {template === "gta_hook" && <label className="field"><span>Hook text (optional)</span><input name="hook_text" maxLength={80} placeholder="Empty: the AI writes one for each clip"/><small>Goes in the white card. A single emoji at the end works.</small></label>}
-              {template === "gta_cam" && <label className="field"><span>Webcam frame</span><select name="frame" defaultValue="neon_palm"><option value="neon_palm">Neon palm (glowing)</option><option value="none">No frame</option></select><small>Clips with no webcam found use the widescreen layout.</small></label>}
+                            {template === "gta_mix" && <fieldset className="field" style={{ border: 0, padding: 0, margin: 0 }}><span>Layouts to mix</span>
+                <label style={{ display: "flex", gap: ".5rem", alignItems: "center" }}><input type="checkbox" name="mix_layouts" value="gta_cam" defaultChecked/> Framed reaction cam</label>
+                <label style={{ display: "flex", gap: ".5rem", alignItems: "center" }}><input type="checkbox" name="mix_layouts" value="gta_hook" defaultChecked/> Widescreen + hook card</label>
+                <small>Each clip gets the layout that suits it (the streamer reacting: framed cam; mostly action: hook card), and neighbouring clips look different. You can still change any clip afterwards.</small></fieldset>}
+              {(template === "gta_cam" || template === "gta_mix") && <label className="field"><span>Webcam frame</span><select name="frame" defaultValue="neon_palm"><option value="neon_palm">Neon palm (glowing)</option><option value="none">No frame</option></select><small>Clips with no webcam found use the widescreen layout.</small></label>}
             </div>
           </div>}
           {template === "gta6_gameplay" && <div className="template-settings wide" aria-label="GTA 6 template settings">
