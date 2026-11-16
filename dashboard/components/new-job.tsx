@@ -5,6 +5,7 @@ import { FormEvent, useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import { useData } from "@/lib/api";
 import { Back, Check, Sparkle, Upload } from "./icons";
+import { browserSender, uploadChunked } from "@/lib/chunked-upload";
 
 type Setup = { inbox: string[]; styles: Array<{ id: string; label: string }> };
 const LENGTHS = [
@@ -43,26 +44,13 @@ const mb = (n: number) => n >= 1e9 ? `${(n / 1e9).toFixed(2)} GB` : `${Math.roun
 const eta = (s: number) => !isFinite(s) || s <= 0 ? "" : s < 90 ? `${Math.ceil(s)} s left` : `${Math.ceil(s / 60)} min left`;
 
 function uploadVideo(file: File, onProgress: (u: Up) => void): Promise<string> {
-  return new Promise((resolve, reject) => {
-    const xhr = new XMLHttpRequest();
-    const t0 = Date.now();
-    xhr.open("POST", "/api/upload");
-    xhr.setRequestHeader("x-filename", encodeURIComponent(file.name));
-    xhr.upload.onprogress = e => {
-      if (!e.lengthComputable) return;
-      const speed = e.loaded / Math.max(0.5, (Date.now() - t0) / 1000);
-      onProgress({ pct: Math.round((e.loaded / e.total) * 100), loaded: e.loaded, total: e.total, speed, eta: (e.total - e.loaded) / speed, phase: "uploading" });
-    };
-    xhr.upload.onload = () => onProgress({ pct: 100, loaded: file.size, total: file.size, speed: 0, eta: 0, phase: "saving" });  // sent; the server is still writing it to the inbox
-    xhr.onload = () => {
-      let body: { filename?: string; error?: string; detail?: string } = {};
-      try { body = JSON.parse(xhr.responseText); } catch { /* not JSON */ }
-      if (xhr.status >= 200 && xhr.status < 300 && body.filename) resolve(body.filename);
-      else reject(new Error(body.error || body.detail || (xhr.status === 401 ? "Your dashboard session expired: reload the page and sign in again." : `Upload failed (${xhr.status})`)));
-    };
-    xhr.onerror = () => reject(new Error("Upload failed: the connection to the dashboard was lost. Check that it is still running, then try again."));
-    xhr.ontimeout = () => reject(new Error("Upload timed out."));
-    xhr.send(file);
+  // Sent as 16 MB pieces (lib/chunked-upload.ts): Runpod's web address cuts any single request after ~100 s / ~100 MB.
+  const t0 = Date.now();
+  let base = -1;  // bytes already on the Pod before this attempt started (a resumed upload): speed counts only what we send now
+  return uploadChunked(file, browserSender, p => {
+    if (base < 0) base = p.loaded;
+    const speed = Math.max(1, (p.loaded - base) / Math.max(0.5, (Date.now() - t0) / 1000));
+    onProgress({ pct: Math.round((p.loaded / p.total) * 100), loaded: p.loaded, total: p.total, speed, eta: (p.total - p.loaded) / speed, phase: p.phase });
   });
 }
 
