@@ -127,7 +127,8 @@ fi
 "$VENV/bin/python" -c "import torch" 2>/dev/null || { log "pip install torch"; "$VENV/bin/pip" install -q torch torchaudio || log "WARN: torch install failed"; }
 "$VENV/bin/pip" install -q -U "yt-dlp[default]" >/dev/null 2>&1 &  # sites change often; keep yt-dlp fresh
 # CUDA 12 cuBLAS/cuDNN for faster-whisper (CTranslate2) come from pip wheels; nvidia/* are namespace packages (no __file__)
-NV_LIBS="$(find "$VENV" -type d \( -path '*/nvidia/cublas/lib' -o -path '*/nvidia/cudnn/lib' -o -path '*/nvidia/cuda_runtime/lib' \) 2>/dev/null | paste -sd: -)"
+# (they may sit in the venv or, via --system-site-packages, in the image's own Python: search every sys.path entry)
+NV_LIBS="$("$VENV/bin/python" -c 'import sys,os,glob;print(":".join(sorted({d for p in sys.path for d in glob.glob(os.path.join(p,"nvidia","*","lib")) if os.path.basename(os.path.dirname(d)) in ("cublas","cudnn","cuda_runtime","cuda_nvrtc")})))' 2>/dev/null)"
 log "CUDA libs for Whisper: ${NV_LIBS:-none found}"
 export LD_LIBRARY_PATH="${NV_LIBS}${LD_LIBRARY_PATH:+:$LD_LIBRARY_PATH}"
 
