@@ -3,29 +3,24 @@
 Everything (download, Whisper, moment finding, AI planning, NVENC rendering, QC, storage, dashboard) runs on the Runpod
 Pod. The Mac is only a browser. n8n is not needed by the pipeline.
 
-## One-time setup on a Pod
+## One-time setup on a new Pod (no terminal needed)
 
-1. **Start (or create) the Pod** in the Runpod console. Image `runpod/pytorch:2.4.0-py3.11-cuda12.4.1-devel-ubuntu22.04`
-   (or any CUDA 12 image with `/start.sh`), container disk ≥ 20 GB, volume ≥ 50 GB at `/workspace`,
-   **HTTP port 8787 exposed** (Jupyter 8888 optional).
-2. **Bootstrap once** — open the Pod's Jupyter → Terminal (or Web Terminal) and run:
+1. **Deploy** (Runpod console → Deploy): any CUDA 12/13 PyTorch template (current Pod: `runpod/pytorch:2.1.0-cu1320-torch280-ubuntu2404`),
+   GPU with NVENC (RTX 2000 Ada $0.24/hr is enough), **Volume disk** ≥ 30 GB at `/workspace`,
+   **Set overrides**: add HTTP port **8787**, Container start command:
+   ```
+   bash -c "if [ -f /workspace/gaming-clipper-host/scripts/pod-start.sh ]; then bash /workspace/gaming-clipper-host/scripts/pod-start.sh & else curl -fsSL https://raw.githubusercontent.com/GhandourGh/gaming-clipper-gpu/master/scripts/pod-start.sh | bash & fi; exec /start.sh"
+   ```
+2. First boot clones the code, installs ffmpeg (NVENC), Postgres, Python, Node, builds the dashboard (~5–10 min) and prints
+   `CLIPPER SETUP CODE: …` in the Pod's **Logs** tab.
+3. **Claim it once** from the Mac (keys go straight to `/workspace/clipper.env`, never through a web form):
    ```bash
-   cd /workspace && ( [ -d gaming-clipper-host/.git ] || git clone https://github.com/GhandourGh/gaming-clipper-gpu.git gaming-clipper-host.new ) ; \
-   [ -d gaming-clipper-host.new ] && { [ -e gaming-clipper-host ] && mv gaming-clipper-host gaming-clipper-host.old; mv gaming-clipper-host.new gaming-clipper-host; \
-     [ -d gaming-clipper-host.old/data ] && mv gaming-clipper-host.old/data gaming-clipper-host/; } ; \
-   grep -q '^CLIPPER_TOKEN=' /workspace/clipper.env 2>/dev/null || echo "CLIPPER_TOKEN=$(openssl rand -hex 24)" >> /workspace/clipper.env ; \
-   bash /workspace/gaming-clipper-host/scripts/pod-start.sh ; tail -n 30 /workspace/clipper-runtime/boot.log
+   curl -X POST https://<POD_ID>-8787.proxy.runpod.net/api/setup -H 'content-type: application/json' \
+     -d '{"code":"<SETUP CODE>","values":{"CLIPPER_TOKEN":"<your token>","GEMINI_API_KEY":"<key>","GPU_USD_PER_HOUR":"0.25"}}'
    ```
-   First run takes ~5–8 min (ffmpeg, Postgres, Python, Node, dashboard build, Whisper download). Later boots: ~1–2 min.
-3. **Make it automatic** — Pod ⋮ → Edit Pod → *Container Start Command*:
-   ```
-   bash -c "bash /workspace/gaming-clipper-host/scripts/pod-start.sh & exec /start.sh"
-   ```
-   From then on every Pod start pulls the latest code and starts everything by itself.
-4. **Open the dashboard**: `https://<POD_ID>-8787.proxy.runpod.net` → sign in with the access key
-   (`CLIPPER_TOKEN` from `/workspace/clipper.env`, or set `DASHBOARD_PASSWORD` there).
-5. **GPU page → Keys on the Pod**: paste the Gemini API key (required), optionally Telegram bot token + chat id,
-   OpenRouter key, and the Pod's hourly price (for the cost display). Then **Re-run checks**: every row must be OK.
+   The services restart with the new settings; the code then stops working (410).
+4. **Open the dashboard**: `https://<POD_ID>-8787.proxy.runpod.net` → access key = `CLIPPER_TOKEN`
+   (or `DASHBOARD_PASSWORD` if set). GPU page → every check OK.
 
 ## Daily use
 - Start the Pod in the Runpod console (phone works), open the dashboard URL, create a job.

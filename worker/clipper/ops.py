@@ -228,6 +228,8 @@ def stop_pod(reason: str) -> dict:
     if not pod:
         return {"stopped": False, "detail": "not running on a Runpod Pod"}
     db.event(None, "warn", "idle-stop", f"stopping Pod {pod}: {reason}", {})
+    if os.environ.get("CLIPPER_DB_BACKUP") == "1":  # database on the container disk: save it to the volume first
+        _sh(["bash", str(config.ROOT / "scripts" / "db-backup.sh")], 300)
     try:
         from . import notify
         notify.send(f"⏹ GPU Pod stopping: {reason}. Start it again in the Runpod console when you need it.")

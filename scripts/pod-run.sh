@@ -53,7 +53,7 @@ FFDIR="$STATE/ffmpeg"
 pick=""
 for cand in "$FFDIR/current/bin/ffmpeg"; do [[ -x "$cand" ]] && nvenc_ok "$cand" && pick="$cand"; done
 if [[ -z "$pick" ]]; then
-  for build in ffmpeg-n7.1-latest-linux64-gpl-7.1 ffmpeg-n6.1-latest-linux64-gpl-6.1; do
+  for build in ffmpeg-n8.1-latest-linux64-gpl-8.1 ffmpeg-n9.0-latest-linux64-gpl-9.0 ffmpeg-master-latest-linux64-gpl; do
     if [[ ! -x "$FFDIR/$build/bin/ffmpeg" ]]; then
       log "downloading $build"
       mkdir -p "$FFDIR" && curl -fsSL "https://github.com/BtbN/FFmpeg-Builds/releases/download/latest/$build.tar.xz" -o "$FFDIR/$build.tar.xz" \
@@ -72,24 +72,40 @@ fi
 [[ -n "$pick" ]] && log "ffmpeg: $(readlink -f "$pick") (NVENC ok)" || log "ERROR: no ffmpeg build can encode with NVENC here; /ready will report it"
 export PATH="$FFDIR/current/bin:$PATH" FFMPEG_FULL="$FFDIR/current/bin/ffmpeg"
 
-# ---------- PostgreSQL (data on the volume) ----------
+# ---------- PostgreSQL ----------
+# Postgres must own its data directory. Some Runpod volumes refuse chown; then the data lives on the container disk and
+# is dumped to the volume every 5 minutes and before an auto-stop (scripts/db-backup.sh), and restored on boot.
 PG_BIN="$(dirname "$(ls /usr/lib/postgresql/*/bin/pg_ctl 2>/dev/null | sort -V | tail -1)")"
-PG_DATA="$STATE/postgres"
+mkdir -p "$STATE/db"
+touch "$STATE/db/.chown-test" && chown postgres "$STATE/db/.chown-test" 2>/dev/null && VOLUME_PG=1 || VOLUME_PG=0
+rm -f "$STATE/db/.chown-test"
+if [[ "$VOLUME_PG" == 1 ]]; then PG_DATA="$STATE/postgres"; PG_LOG="$STATE/postgres.log"
+else PG_DATA="/var/lib/clipper-pg/data"; PG_LOG="/var/lib/clipper-pg/postgres.log"; ln -sfn "$PG_LOG" "$STATE/postgres.log" 2>/dev/null; fi
+export CLIPPER_DB_BACKUP=$((1 - VOLUME_PG)) CLIPPER_DB_DUMP="$STATE/db/clipper.dump"
+PSQL=(runuser -u postgres -- psql -q -p 5435 -d postgres -v ON_ERROR_STOP=1)  # unix socket: peer/trust auth for postgres
 if [[ -x "$PG_BIN/pg_ctl" ]]; then
+  fresh=0
   if [[ ! -s "$PG_DATA/PG_VERSION" ]]; then
-    mkdir -p "$PG_DATA"; chown -R postgres:postgres "$PG_DATA"
+    mkdir -p "$PG_DATA"; chown -R postgres:postgres "$(dirname "$PG_DATA")"; chmod 700 "$PG_DATA"
     runuser -u postgres -- "$PG_BIN/initdb" -D "$PG_DATA" --encoding=UTF8 --locale=C.UTF-8 --auth-local=trust --auth-host=scram-sha-256 >/dev/null
+    fresh=1
   fi
-  chown -R postgres:postgres "$PG_DATA"; chmod 700 "$PG_DATA"
+  chown -R postgres:postgres "$PG_DATA"; chmod 700 "$PG_DATA"; touch "$PG_LOG"; chown postgres "$PG_LOG"
   rm -f "$PG_DATA/postmaster.pid"  # left behind when the Pod was stopped
   runuser -u postgres -- "$PG_BIN/pg_ctl" -D "$PG_DATA" status >/dev/null 2>&1 \
-    || runuser -u postgres -- "$PG_BIN/pg_ctl" -D "$PG_DATA" -l "$STATE/postgres.log" -o "-p 5435 -h 127.0.0.1" -w start >/dev/null
-  runuser -u postgres -- psql -q -p 5435 -h 127.0.0.1 -d postgres -v ON_ERROR_STOP=1 --set=pw="$CLIPPER_DB_PASSWORD" <<'SQL' >/dev/null
+    || runuser -u postgres -- "$PG_BIN/pg_ctl" -D "$PG_DATA" -l "$PG_LOG" -o "-p 5435 -h 127.0.0.1" -w start >/dev/null
+  "${PSQL[@]}" --set=pw="$CLIPPER_DB_PASSWORD" <<'SQL' >/dev/null
 SELECT format('CREATE ROLE clipper LOGIN PASSWORD %L', :'pw') WHERE NOT EXISTS (SELECT FROM pg_roles WHERE rolname='clipper') \gexec
 SELECT 'CREATE DATABASE clipper OWNER clipper' WHERE NOT EXISTS (SELECT FROM pg_database WHERE datname='clipper') \gexec
 ALTER ROLE clipper PASSWORD :'pw';
 SQL
-  log "postgres up ($PG_BIN)"
+  if [[ "$fresh" == 1 && "$VOLUME_PG" == 0 && -s "$CLIPPER_DB_DUMP" ]]; then
+    runuser -u postgres -- "$PG_BIN/pg_restore" -p 5435 -d clipper --no-owner --role=clipper "$CLIPPER_DB_DUMP" 2>/dev/null
+    log "restored database from $CLIPPER_DB_DUMP"
+  fi
+  if runuser -u postgres -- psql -p 5435 -d clipper -tAc "select 1" >/dev/null 2>&1; then
+    log "postgres up ($PG_BIN, data in $PG_DATA)"
+  else log "ERROR: postgres did not start (see $PG_LOG)"; fi
 else
   log "ERROR: PostgreSQL binaries missing"
 fi
@@ -148,6 +164,7 @@ supervise() {  # supervise NAME CMD...: restart CMD 3 s after it exits, forever;
 pkill -f "uvicorn clipper.main:app" 2>/dev/null; pkill -f "next start" 2>/dev/null; pkill -f "next-server" 2>/dev/null; sleep 1
 cd "$ROOT/worker"
 supervise worker "$VENV/bin/python" -m uvicorn clipper.main:app --host 127.0.0.1 --port 8788 --log-level warning
+if [[ "$CLIPPER_DB_BACKUP" == 1 ]]; then supervise dbbackup bash -c "while true; do sleep 300; bash '$ROOT/scripts/db-backup.sh'; done"; else stop_sup dbbackup; fi
 cd "$ROOT/dashboard"
 supervise dashboard env PORT=8787 HOSTNAME=0.0.0.0 NEXT_TELEMETRY_DISABLED=1 "$NODE_DIR/bin/npx" next start -H 0.0.0.0 -p 8787
 
