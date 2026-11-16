@@ -14,7 +14,10 @@ import numpy as np
 
 from . import config
 
-FFMPEG = os.environ.get("FFMPEG_FULL", "/opt/homebrew/opt/ffmpeg-full/bin/ffmpeg")
+_ffmpeg_default = "/usr/bin/ffmpeg" if platform.system() == "Linux" else "/opt/homebrew/opt/ffmpeg-full/bin/ffmpeg"
+FFMPEG = os.environ.get("FFMPEG_FULL") or _ffmpeg_default
+if not Path(FFMPEG).exists():
+    FFMPEG = shutil.which("ffmpeg") or FFMPEG
 FONTS = config.RENDERER / "public" / "fonts"
 W, H = 1080, 1920
 CAPTION_BAR = 200  # px height of the caption strip between webcam and gameplay (split layout, "bar" captions)
